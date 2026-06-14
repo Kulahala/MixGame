@@ -15,12 +15,15 @@ export default class HuarongdaoScene extends BaseGameScene {
 
   init() {
     const width = this.host.width;
-    const safeTop = this.host.safeTop;
+    const height = this.host.height;
     this.boardSize = Math.min(width - 32, 342);
     this.cell = this.boardSize / this.state.size;
     this.boardX = (width - this.boardSize) / 2;
-    this.boardY = safeTop + 164;
-
+    
+    // 中下部符合人体工学的垂直居中偏下布局，方便单手游玩
+    this.boardY = Math.floor((height - this.boardSize) / 2) + 30;
+    if (this.boardY < 130) this.boardY = 130;
+    
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
 

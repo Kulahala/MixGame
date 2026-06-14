@@ -45,7 +45,12 @@ export default class Game2048Scene extends BaseGameScene {
     this.cellSize = Math.floor(Math.min((width - 48) / 4, (height - 220) / 4));
     this.gridSize = this.cellSize * 4 + this.gap * 5;
     this.gridX = Math.floor((width - this.gridSize) / 2);
-    this.gridY = this.host.safeTop + 160;
+    
+    // 中下部符合人体工学的垂直居中偏下布局，方便单手游玩
+    this.gridY = Math.floor((height - this.gridSize) / 2) + 30;
+    if (this.gridY < this.host.safeTop + 130) {
+      this.gridY = this.host.safeTop + 130;
+    }
   }
 
   // ── Lifecycle ────────────────────────────────────────

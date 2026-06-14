@@ -47,7 +47,13 @@ export default class MemoryScene extends BaseGameScene {
 
     const gridW = cols * this.cardSize + (cols - 1) * gap;
     this.gridX = (width - gridW) / 2;
-    this.gridY = this.host.safeTop + 150;
+    
+    // 中下部符合人体工学的垂直居中偏下布局，方便单手游玩
+    const gridH = rows * this.cardSize + (rows - 1) * gap;
+    this.gridY = Math.floor((height - gridH) / 2) + 30;
+    if (this.gridY < this.host.safeTop + 130) {
+      this.gridY = this.host.safeTop + 130;
+    }
 
     this.titleY = this.host.safeTop + 90;
     this.statsY = this.host.safeTop + 125;
