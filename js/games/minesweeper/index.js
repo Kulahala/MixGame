@@ -37,12 +37,12 @@ export default class MinesweeperScene extends BaseGameScene {
     this.boardWidth = this.cellSize * this.state.cols;
     this.boardHeight = this.cellSize * this.state.rows;
     this.boardX = (width - this.boardWidth) / 2;
-    this.boardY = 120 + Math.max(0, (height - 220 - this.boardHeight) / 2);
+    this.boardY = this.host.safeTop + 120 + Math.max(0, (height - 220 - this.boardHeight) / 2);
 
     // 模式切换按钮
     this.modeButton = new Button({
       x: width / 2 - 37,
-      y: 34,
+      y: this.host.safeTop + 8,
       w: 74,
       h: 36,
       label: '揭开',

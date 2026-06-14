@@ -76,6 +76,8 @@ globalThis.wx = {
       screenWidth: rect.width,
       screenHeight: rect.height,
       pixelRatio: window.devicePixelRatio || 1,
+      safeArea: { top: 0, bottom: rect.height, left: 0, right: rect.width },
+      statusBarHeight: 0,
     };
   },
   getSystemInfoSync() {

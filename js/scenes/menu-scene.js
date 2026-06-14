@@ -45,7 +45,7 @@ export default class MenuScene {
     const rows = Math.ceil(count / cols);
 
     const isSmallScreen = height < 700;
-    const topArea = isSmallScreen ? 120 : 160;
+    const topArea = (isSmallScreen ? 120 : 160) + this.host.safeTop;
     const bottomArea = 42;
 
     const margin = cols === 2 ? 16 : 24;

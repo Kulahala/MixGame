@@ -1,4 +1,4 @@
-import { SCREEN_WIDTH, SCREEN_HEIGHT } from '../render.js';
+import { SCREEN_WIDTH, SCREEN_HEIGHT, SAFE_TOP } from '../render.js';
 import elegantTheme from '../themes/elegant.js';
 import MenuScene from '../scenes/menu-scene.js';
 import { getGameConfig } from '../games/registry.js';
@@ -10,6 +10,7 @@ export default class GameHost {
     this.theme = elegantTheme;
     this.width = SCREEN_WIDTH;
     this.height = SCREEN_HEIGHT;
+    this.safeTop = SAFE_TOP;
     this.scene = null;
     this.aniId = 0;
     this.lastTime = 0;

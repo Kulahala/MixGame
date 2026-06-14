@@ -39,6 +39,7 @@ export default class SudokuScene extends BaseGameScene {
       boardMargin = 64; // 给盘面更多缩放
       topMargin = 55; // Header被压得更扁，棋盘继续上移
     }
+    topMargin += this.host.safeTop;
 
     this.boardSize = Math.min(width - boardMargin, 342);
     if (height < 700 && this.boardSize > 280) this.boardSize = 280;
@@ -122,10 +123,11 @@ export default class SudokuScene extends BaseGameScene {
 
   renderHeader(ctx) {
     const theme = this.theme;
+    const safeTop = this.host.safeTop;
     const isSmall = this.host.height < 700;
     const isTiny = this.host.height < 600;
-    const titleY = isTiny ? 25 : (isSmall ? 32 : 52);
-    const subY = isTiny ? 42 : (isSmall ? 52 : 102);
+    const titleY = safeTop + (isTiny ? 25 : (isSmall ? 32 : 52));
+    const subY = safeTop + (isTiny ? 42 : (isSmall ? 52 : 102));
 
     drawText(ctx, '经典数独', this.host.width / 2, titleY, {
       size: isSmall ? 20 : 25,

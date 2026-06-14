@@ -62,15 +62,16 @@ export default class BaseGameScene {
    */
   createTopButtons(extraButtons = []) {
     const width = this.host.width;
+    const topY = this.host.safeTop + 8;
 
     this.backButton = new Button({
-      x: 18, y: 34, w: 74, h: 36,
+      x: 18, y: topY, w: 74, h: 36,
       label: '返回', variant: 'ghost',
       onClick: () => this.exit(() => this.host.showMenu()),
     });
 
     this.resetButton = new Button({
-      x: width - 92, y: 34, w: 74, h: 36,
+      x: width - 92, y: topY, w: 74, h: 36,
       label: '重开', variant: 'ghost',
       onClick: () => this.reset(),
     });

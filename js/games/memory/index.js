@@ -46,10 +46,10 @@ export default class MemoryScene extends BaseGameScene {
 
     const gridW = cols * this.cardSize + (cols - 1) * gap;
     this.gridX = (width - gridW) / 2;
-    this.gridY = 150;
+    this.gridY = this.host.safeTop + 150;
 
-    this.titleY = 90;
-    this.statsY = 125;
+    this.titleY = this.host.safeTop + 90;
+    this.statsY = this.host.safeTop + 125;
   }
 
   reset() {

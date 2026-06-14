@@ -44,7 +44,7 @@ export default class Game2048Scene extends BaseGameScene {
     this.cellSize = Math.floor(Math.min((width - 48) / 4, (height - 220) / 4));
     this.gridSize = this.cellSize * 4 + this.gap * 5;
     this.gridX = Math.floor((width - this.gridSize) / 2);
-    this.gridY = 160;
+    this.gridY = this.host.safeTop + 160;
   }
 
   // ── Lifecycle ────────────────────────────────────────

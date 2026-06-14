@@ -14,10 +14,11 @@ export default class HuarongdaoScene extends BaseGameScene {
 
   init() {
     const width = this.host.width;
+    const safeTop = this.host.safeTop;
     this.boardSize = Math.min(width - 32, 342);
     this.cell = this.boardSize / this.state.size;
     this.boardX = (width - this.boardSize) / 2;
-    this.boardY = 164;
+    this.boardY = safeTop + 164;
 
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
@@ -110,7 +111,8 @@ export default class HuarongdaoScene extends BaseGameScene {
 
   renderHeader(ctx) {
     const theme = this.theme;
-    drawText(ctx, '数字华容道', this.host.width / 2, 52, {
+    const safeTop = this.host.safeTop;
+    drawText(ctx, '数字华容道', this.host.width / 2, safeTop + 52, {
       size: 25,
       color: theme.color.ink,
       align: 'center',
@@ -118,7 +120,7 @@ export default class HuarongdaoScene extends BaseGameScene {
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `${this.state.size}x${this.state.size} 难度 · ${this.state.steps} 步 · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, 102, {
+    drawText(ctx, `${this.state.size}x${this.state.size} 难度 · ${this.state.steps} 步 · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, safeTop + 102, {
       size: 13,
       color: theme.color.muted,
       align: 'center',
