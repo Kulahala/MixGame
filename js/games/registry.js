@@ -3,6 +3,8 @@ import HuarongdaoScene from './huarongdao/index.js';
 import MinesweeperScene from './minesweeper/index.js';
 import Game2048Scene from './game2048/index.js';
 import MemoryScene from './memory/index.js';
+import SlitherlinkScene from './slitherlink/index.js';
+
 
 export const GAMES = [
   {
@@ -84,6 +86,21 @@ export const GAMES = [
     ],
     themeColor: '#a54b44',
     iconText: '忆',
+  },
+  {
+    id: 'slitherlink',
+    name: '数回',
+    sceneClass: SlitherlinkScene,
+    formatScore: (scoreObj) => {
+      return scoreObj && scoreObj.bestScore ? `最佳 ${scoreObj.bestScore} 分 · ${scoreObj.bestTime}s` : '连接点线形成单一闭合回路';
+    },
+    configTitle: '数回网格尺寸',
+    configOptions: [
+      { label: '5 x 5 (简单)', value: { rows: 5, cols: 5 } },
+      { label: '7 x 7 (困难)', value: { rows: 7, cols: 7 } }
+    ],
+    themeColor: '#52677a',
+    iconText: '圈'
   }
 ];
 
