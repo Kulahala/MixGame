@@ -25,3 +25,6 @@ feedback-*.png
 
 # Local multi-agent planning
 plan.md
+
+# Deepwork progress
+.slim/deepwork/

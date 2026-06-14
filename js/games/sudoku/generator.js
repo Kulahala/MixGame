@@ -1,12 +1,12 @@
 export function generateSudoku(holes = 30) {
   let board = Array.from({ length: 9 }, () => Array(9).fill(0));
-  
+
   fillBoard(board);
   const solution = board.map(row => [...row]);
 
   let puzzle = solution.map(row => [...row]);
   let attempts = holes;
-  
+
   let positions = [];
   for (let i = 0; i < 9; i++) {
     for (let j = 0; j < 9; j++) {
@@ -15,20 +15,20 @@ export function generateSudoku(holes = 30) {
   }
   positions.sort(() => Math.random() - 0.5);
 
-  for (let i = 0; i < positions.length; i++) {
-    if (attempts <= 0) break;
-    const [r, c] = positions[i];
-    
-    let backup = puzzle[r][c];
-    puzzle[r][c] = 0;
-    
-    let solutionsCount = 0;
-    countSolutions(puzzle, () => {
-      solutionsCount++;
-      return solutionsCount > 1; 
-    });
+  // 每次 countSolutionsLimited 的最大迭代次数。
+  // 超过此限制时认为"无法确认唯一解"，跳过该位置。
+  // 5000 次迭代在低端设备上约需 1-2ms，可避免指数级卡顿。
+  const MAX_ITER = 5000;
 
-    if (solutionsCount === 1) {
+  for (let i = 0; i < positions.length && attempts > 0; i++) {
+    const [r, c] = positions[i];
+    const backup = puzzle[r][c];
+    puzzle[r][c] = 0;
+
+    // -1=超时不确定(视为不安全), 0=无解, 1=唯一解, 2=多解
+    const result = countSolutionsLimited(puzzle, MAX_ITER);
+
+    if (result === 1) {
       attempts--;
     } else {
       puzzle[r][c] = backup;
@@ -72,23 +72,50 @@ function fillBoard(board) {
   return true;
 }
 
-function countSolutions(board, onSolutionFound) {
-  for (let r = 0; r < 9; r++) {
-    for (let c = 0; c < 9; c++) {
-      if (board[r][c] === 0) {
-        for (let num = 1; num <= 9; num++) {
-          if (isValid(board, r, c, num)) {
-            board[r][c] = num;
-            if (countSolutions(board, onSolutionFound)) {
-              board[r][c] = 0;
-              return true; 
+/**
+ * 带迭代预算的求解计数。
+ * 在回溯求解过程中统计找到的解数量，一旦超过迭代预算立即放弃。
+ *
+ * @param {number[][]} board  盘面（会被修改，调用方应传入副本）
+ * @param {number}     maxIter 最大迭代次数
+ * @returns {number}  -1 = 超时（结果不确定，视为不安全）
+ *                      0 = 无解
+ *                      1 = 唯一解 ✓
+ *                      2 = 多个解
+ */
+function countSolutionsLimited(board, maxIter) {
+  const ctx = { iters: 0, count: 0, exceeded: false };
+
+  function search() {
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (board[r][c] === 0) {
+          for (let num = 1; num <= 9; num++) {
+            ctx.iters++;
+            if (ctx.iters > maxIter) {
+              ctx.exceeded = true;
+              return false;
             }
-            board[r][c] = 0;
+            if (isValid(board, r, c, num)) {
+              board[r][c] = num;
+              if (search()) {
+                board[r][c] = 0;
+                return true;
+              }
+              board[r][c] = 0;
+            }
+            if (ctx.count > 1) return true;
           }
+          return false;
         }
-        return false;
       }
     }
+    ctx.count++;
+    return ctx.count > 1;
   }
-  return onSolutionFound();
+
+  search();
+
+  if (ctx.exceeded) return -1;
+  return ctx.count;
 }

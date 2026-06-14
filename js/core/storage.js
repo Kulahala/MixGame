@@ -13,6 +13,24 @@ const DEFAULT_SCORES = {
     bestTime: 0,
     plays: 0,
   },
+  minesweeper: {
+    bestScore: 0,
+    bestTime: 0,
+    bestSteps: 0,
+    plays: 0,
+  },
+  game2048: {
+    bestScore: 0,
+    bestTime: 0,
+    bestSteps: 0,
+    plays: 0,
+  },
+  memory: {
+    bestScore: 0,
+    bestTime: 0,
+    bestSteps: 0,
+    plays: 0,
+  },
 };
 
 function cloneDefaultScores() {

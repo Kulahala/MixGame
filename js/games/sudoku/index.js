@@ -1,16 +1,14 @@
+import BaseGameScene from '../../core/game-scene-base.js';
 import Button from '../../ui/button.js';
-import ResultModal from '../../ui/result-modal.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import { PUZZLE, SOLUTION } from './puzzle.js';
 import { generateSudoku } from './generator.js';
 import SudokuBoardState from './state.js';
-import InputDispatcher from '../../core/input-dispatcher.js';
 
-export default class SudokuScene {
+export default class SudokuScene extends BaseGameScene {
   constructor(host, options = {}) {
-    this.host = host;
-    this.theme = host.theme;
-    
+    super(host, options);
+
     let initialPuzzle, solution;
     if (options.holes) {
       const generated = generateSudoku(options.holes);
@@ -20,31 +18,17 @@ export default class SudokuScene {
       initialPuzzle = PUZZLE;
       solution = SOLUTION;
     }
-    
+
     this.state = new SudokuBoardState(initialPuzzle, solution);
     this.selected = { row: 0, col: 2 };
-    this.buttons = [];
     this.pressedKey = 0;
     this.keyPressTimer = null;
-    this.input = new InputDispatcher();
-
-    // Exit Animation States
-    this.isExiting = false;
-    this.exitTime = 0;
-    this.exitDuration = 200; // ms
-    this.exitCallback = null;
-  }
-
-  exit(callback) {
-    this.isExiting = true;
-    this.exitTime = 0;
-    this.exitCallback = callback;
   }
 
   init() {
     const width = this.host.width;
     const height = this.host.height;
-    
+
     let boardMargin = 32;
     let topMargin = 140;
     if (height < 700) {
@@ -63,35 +47,13 @@ export default class SudokuScene {
     this.cell = this.boardSize / 9;
     this.boardX = (width - this.boardSize) / 2;
     this.boardY = topMargin;
-    
+
     // 工具按钮所在行
     this.actionBtnY = this.boardY + this.boardSize + (height < 600 ? 10 : 16);
     // 数字键盘所在行
     this.keyY = this.actionBtnY + 36 + (height < 600 ? 10 : 12);
-    
-    this.setupButtons();
-  }
 
-  setupButtons() {
-    const width = this.host.width;
-    this.backButton = new Button({
-      x: 18,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '返回',
-      variant: 'ghost',
-      onClick: () => this.exit(() => this.host.showMenu()),
-    });
-    this.resetButton = new Button({
-      x: width - 92,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '重开',
-      variant: 'ghost',
-      onClick: () => this.reset(),
-    });
+    // 创建底部操作按钮
     this.undoButton = new Button({
       x: width / 2 - 123,
       y: this.actionBtnY,
@@ -127,9 +89,8 @@ export default class SudokuScene {
         this.noteButton.variant = isNote ? 'secondary' : 'ghost';
       },
     });
-    
-    this.buttons = [this.backButton, this.undoButton, this.eraseButton, this.resetButton, this.noteButton];
-    this.buttons.forEach(btn => this.input.add(btn));
+
+    this.createTopButtons([this.undoButton, this.eraseButton, this.noteButton]);
   }
 
   reset() {
@@ -138,49 +99,20 @@ export default class SudokuScene {
     this.pressedKey = 0;
     this.noteButton.label = '笔记';
     this.noteButton.variant = 'ghost';
-    if (this.modal) {
-      this.input.remove(this.modal);
-      this.modal = null;
-    }
+    this.closeModal();
   }
 
-  update(dt = 16) {
-    if (this.isExiting) {
-      this.exitTime = Math.min(this.exitDuration, this.exitTime + dt);
-      if (this.exitTime >= this.exitDuration && this.exitCallback) {
-        const cb = this.exitCallback;
-        this.exitCallback = null;
-        cb();
-      }
-      return;
-    }
+  update(dt) {
+    if (super.update(dt)) return;
 
     if (!this.state.completed && this.state.isBoardFull()) {
       if (this.state.isSolved()) {
         this.state.completed = true;
         this.state.saveResult();
-        this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
-        
-        this.modal = new ResultModal({
-          host: this.host,
-          title: '恭喜通关！',
-          stats: [
-            `用时：${this.state.getTimeSpent()}s`,
-            `累计填写：${this.state.fills}次`
-          ],
-          onMenu: () => {
-            if (this.modal && this.modal.close) {
-              this.modal.close(() => {
-                this.exit(() => this.host.showMenu());
-              });
-            } else {
-              this.exit(() => this.host.showMenu());
-            }
-          },
-          onRestart: () => this.reset()
-        });
-        this.input.add(this.modal);
-
+        this.showResult('恭喜通关！', [
+          `用时：${this.state.getTimeSpent()}s`,
+          `累计填写：${this.state.fills}次`
+        ], true);
       } else {
         if (this.state.checkMistakes()) {
           if (typeof wx !== 'undefined' && wx.vibrateShort) {
@@ -191,50 +123,10 @@ export default class SudokuScene {
     }
   }
 
-  render(ctx) {
-    const theme = this.theme;
-    
-    // 进场动画：使用 easeOutQuart 缓动 (比原本线性更具优雅的减速滑行质感)
-    const progress = Math.min(1, this.host.sceneAge / 320);
-    const ease = 1 - Math.pow(1 - progress, 4);
-    const reveal = ease;
-
-    // 退场动画：向下掉落淡出
-    let exitAlpha = 1;
-    let exitOffset = 0;
-    if (this.isExiting) {
-      const p = this.exitTime / this.exitDuration;
-      const easeExit = p * p; // easeInQuad
-      exitAlpha = 1 - easeExit;
-      exitOffset = easeExit * 16;
-    }
-
-    ctx.clearRect(0, 0, this.host.width, this.host.height);
-    ctx.fillStyle = theme.color.bg;
-    ctx.fillRect(0, 0, this.host.width, this.host.height);
-
-    ctx.save();
-    ctx.globalAlpha = exitAlpha;
-    ctx.translate(0, exitOffset);
-
-    ctx.save();
-    ctx.globalAlpha = reveal;
-    ctx.translate(0, (1 - reveal) * 10);
-    this.backButton.render(ctx, theme);
-    this.undoButton.render(ctx, theme);
-    this.eraseButton.render(ctx, theme);
-    this.resetButton.render(ctx, theme);
-    this.noteButton.render(ctx, theme);
+  renderGame(ctx) {
     this.renderHeader(ctx);
     this.renderBoard(ctx);
     this.renderNumberPad(ctx);
-    ctx.restore();
-
-    ctx.restore();
-
-    if (this.modal) {
-      this.modal.render(ctx, theme);
-    }
   }
 
   renderHeader(ctx) {
@@ -384,16 +276,6 @@ export default class SudokuScene {
     this.handleNumberPad(point);
   }
 
-  onTouchMove(point) {
-    if (this.isExiting) return;
-    this.input.onTouchMove(point.x, point.y);
-  }
-
-  onTouchEnd(point) {
-    if (this.isExiting) return;
-    this.input.onTouchEnd(point.x, point.y);
-  }
-
   handleNumberPad(point) {
     if (this.state.completed) return;
     const layout = this.getKeypadLayout();
@@ -454,12 +336,7 @@ export default class SudokuScene {
   }
 
   destroy() {
-    this.buttons.forEach((button) => button.destroy && button.destroy());
-    if (this.modal) {
-      this.input.remove(this.modal);
-      this.modal.destroy();
-      this.modal = null;
-    }
+    super.destroy();
     if (this.keyPressTimer) {
       clearTimeout(this.keyPressTimer);
       this.keyPressTimer = null;

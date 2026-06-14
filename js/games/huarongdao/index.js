@@ -1,32 +1,15 @@
-import Button from '../../ui/button.js';
-import ResultModal from '../../ui/result-modal.js';
+import BaseGameScene from '../../core/game-scene-base.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import HuarongdaoState from './state.js';
-import InputDispatcher from '../../core/input-dispatcher.js';
 
-export default class HuarongdaoScene {
+export default class HuarongdaoScene extends BaseGameScene {
   constructor(host, options = {}) {
-    this.host = host;
-    this.theme = host.theme;
-    
+    super(host, options);
+
     this.state = new HuarongdaoState(options.size || 4);
-    
-    this.buttons = [];
+
     this.touchStartPoint = null;
     this.touchStartGrid = null;
-    this.input = new InputDispatcher();
-
-    // Exit Animation States
-    this.isExiting = false;
-    this.exitTime = 0;
-    this.exitDuration = 200; // ms
-    this.exitCallback = null;
-  }
-
-  exit(callback) {
-    this.isExiting = true;
-    this.exitTime = 0;
-    this.exitCallback = callback;
   }
 
   init() {
@@ -35,43 +18,16 @@ export default class HuarongdaoScene {
     this.cell = this.boardSize / this.state.size;
     this.boardX = (width - this.boardSize) / 2;
     this.boardY = 164;
-    
+
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
 
-    this.setupButtons();
-  }
-
-  setupButtons() {
-    const width = this.host.width;
-    this.backButton = new Button({
-      x: 18,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '返回',
-      variant: 'ghost',
-      onClick: () => this.exit(() => this.host.showMenu()),
-    });
-    this.resetButton = new Button({
-      x: width - 92,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '重开',
-      variant: 'ghost',
-      onClick: () => this.reset(),
-    });
-    this.buttons = [this.backButton, this.resetButton];
-    this.buttons.forEach(b => this.input.add(b));
+    this.createTopButtons();
   }
 
   reset() {
     this.state.reset();
-    if (this.modal) {
-      this.input.remove(this.modal);
-      this.modal = null;
-    }
+    this.closeModal();
     // 重置所有动画状态
     this.tileAnimations = {};
   }
@@ -115,41 +71,16 @@ export default class HuarongdaoScene {
     return moved;
   }
 
-  update(dt = 16) {
-    if (this.isExiting) {
-      this.exitTime = Math.min(this.exitDuration, this.exitTime + dt);
-      if (this.exitTime >= this.exitDuration && this.exitCallback) {
-        const cb = this.exitCallback;
-        this.exitCallback = null;
-        cb();
-      }
-      return;
-    }
+  update(dt) {
+    if (super.update(dt)) return;
 
     if (!this.state.completed && this.state.isSolved()) {
       this.state.completed = true;
       this.state.saveResult();
-      this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
-
-      this.modal = new ResultModal({
-        host: this.host,
-        title: '恭喜通关！',
-        stats: [
-          `用时：${this.state.getElapsed()}s`,
-          `总步数：${this.state.steps}步`
-        ],
-        onMenu: () => {
-          if (this.modal && this.modal.close) {
-            this.modal.close(() => {
-              this.exit(() => this.host.showMenu());
-            });
-          } else {
-            this.exit(() => this.host.showMenu());
-          }
-        },
-        onRestart: () => this.reset()
-      });
-      this.input.add(this.modal);
+      this.showResult('恭喜通关！', [
+        `用时：${this.state.getElapsed()}s`,
+        `总步数：${this.state.steps}步`
+      ], true);
     }
 
     // 每一帧平滑地更新方块渲染动画偏移量
@@ -171,45 +102,10 @@ export default class HuarongdaoScene {
     }
   }
 
-  render(ctx) {
+  renderGame(ctx) {
     const theme = this.theme;
-    
-    // 进场动画：使用 easeOutQuart 缓动 (比原本线性更具优雅的减速滑行质感)
-    const progress = Math.min(1, this.host.sceneAge / 320);
-    const ease = 1 - Math.pow(1 - progress, 4);
-    const reveal = ease;
-
-    // 退场动画：向下掉落淡出
-    let exitAlpha = 1;
-    let exitOffset = 0;
-    if (this.isExiting) {
-      const p = this.exitTime / this.exitDuration;
-      const easeExit = p * p; // easeInQuad
-      exitAlpha = 1 - easeExit;
-      exitOffset = easeExit * 16;
-    }
-
-    ctx.clearRect(0, 0, this.host.width, this.host.height);
-    ctx.fillStyle = theme.color.bg;
-    ctx.fillRect(0, 0, this.host.width, this.host.height);
-
-    ctx.save();
-    ctx.globalAlpha = exitAlpha;
-    ctx.translate(0, exitOffset);
-
-    ctx.save();
-    ctx.globalAlpha = reveal;
-    ctx.translate(0, (1 - reveal) * 10);
-    this.buttons.forEach(b => b.render(ctx, theme));
     this.renderHeader(ctx);
     this.renderBoard(ctx);
-    ctx.restore();
-
-    ctx.restore();
-
-    if (this.modal) {
-      this.modal.render(ctx, theme);
-    }
   }
 
   renderHeader(ctx) {
@@ -283,11 +179,6 @@ export default class HuarongdaoScene {
     }
   }
 
-  onTouchMove(point) {
-    if (this.isExiting) return;
-    this.input.onTouchMove(point.x, point.y);
-  }
-
   onTouchEnd(point) {
     if (this.isExiting) return;
     this.input.onTouchEnd(point.x, point.y);
@@ -321,9 +212,6 @@ export default class HuarongdaoScene {
   }
 
   destroy() {
-    this.buttons.forEach((b) => b.destroy && b.destroy());
-    if (this.modal) {
-      this.modal.destroy();
-    }
+    super.destroy();
   }
 }

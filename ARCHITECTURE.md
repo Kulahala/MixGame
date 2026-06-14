@@ -8,12 +8,14 @@ This project is a pure frontend WeChat Mini Game collection. Runtime code runs o
 
 `GameHost` owns the active scene, frame updates, rendering, scene switching, touch dispatch, and shared visual effects. Scenes expose optional `init()`, `update(dt)`, `render(ctx)`, `onTouchStart(point)`, `onTouchMove(point)`, `onTouchEnd(point)`, and `destroy()` methods.
 
+All game scenes extend `BaseGameScene`, which provides standard enter/exit animations, top-bar buttons (back + restart), result modal lifecycle, and input cleanup. Subclasses implement `reset()` and `renderGame(ctx)`.
+
 ## Module Boundaries
 
-- `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `input-dispatcher.js` routes touches to interactive objects, and `storage.js` persists local scores.
+- `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `game-scene-base.js` provides shared scene behavior (animations, buttons, modals), `input-dispatcher.js` routes touches to interactive objects, and `storage.js` persists local scores.
 - `js/scenes/`: app-level screens. `menu-scene.js` renders the game selection menu and opens configuration modals.
-- `js/games/`: game modules. Each game should keep rule/state logic in `state.js` and scene/render/input glue in `index.js`.
-- `js/ui/`: reusable Canvas UI primitives and overlays such as `Button`, `ConfigModal`, `ResultModal`, and `Confetti`.
+- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`.
+- `js/ui/`: reusable Canvas UI primitives and overlays.
 - `js/themes/`: shared visual tokens. Current UI uses `elegant.js`.
 - `dev/`: browser-only debug adapter. It should not become a second runtime architecture.
 
@@ -42,19 +44,29 @@ Interactive UI objects should follow the same lifecycle:
 - `onTouchMove(x, y)` updates pressed or hover-like state.
 - `onTouchEnd(x, y)` triggers the action only when appropriate.
 
+## Canvas and Rendering
+
+`js/render.js` creates the primary canvas, sets its physical size to `windowWidth × windowHeight × pixelRatio`, and exports `SCREEN_WIDTH`, `SCREEN_HEIGHT` (logical pixels) and `PIXEL_RATIO`. `js/main.js` applies `ctx.scale(PIXEL_RATIO, PIXEL_RATIO)` so all downstream code works in logical pixels.
+
+All game scenes render through `BaseGameScene.render(ctx)`, which handles background fill, enter/exit animation wrapping, top buttons, and modal overlay. Subclasses implement `renderGame(ctx)` for game-specific drawing.
+
+The menu scene (`MenuScene`) is independent — it manages its own layout, animation, and input dispatch. It supports a responsive 2-column grid when the game count is 3 or more.
+
 ## Game State
 
 State classes own gameplay rules, scoring inputs, completion checks, timers, and save calls.
 
-`SudokuBoardState` owns the puzzle board, fixed cells, notes, undo history, mistake tracking, fill count, solve detection, score calculation, and local save.
+`SudokuBoardState` owns the puzzle board, fixed cells, notes, undo history, mistake tracking, fill count, solve detection, score calculation, and local save. The puzzle generator (`generator.js`) uses a bounded backtracking solver with an iteration budget to avoid stalls on low-end devices.
 
 `HuarongdaoState` owns puzzle size, grid generation, shuffle, tile movement, solve detection, timing, steps, and local save.
+
+`MinesweeperState`, `Game2048State`, and `MemoryState` follow the same pattern: own the game rules, completion checks, scoring, and local save.
 
 Scenes should not duplicate core game rules. They should translate screen input into state method calls and render state.
 
 ## Scoring And Storage
 
-Scores are stored through `saveScore(gameId, result)` in `js/core/storage.js`, using `wx.setStorageSync` under the key `mini_game_collection_scores_v1`.
+Scores are stored through `saveScore(gameId, result)` in `js/core/storage.js`, using `wx.setStorageSync` under the key `mini_game_collection_scores_v1`. Default score templates exist for all five games.
 
 Current stored fields include best and last values for score, time, steps, mistakes, difficulty, level id, and play count. If future games need different metrics, extend storage deliberately instead of overloading existing fields with unrelated meaning.
 
@@ -62,7 +74,7 @@ Result screens may display intuitive per-game metrics such as time, steps, mista
 
 ## UI And Effects
 
-Canvas UI should use shared helpers from `js/ui/canvas.js` and shared theme values from `js/themes/elegant.js`.
+Canvas UI should use shared helpers from `js/ui/canvas.js` and shared theme values from `js/themes/elegant.js`. Game scenes should extend `BaseGameScene` and implement `reset()` and `renderGame(ctx)` rather than duplicating animation, button, and modal logic.
 
 Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`.
 
@@ -70,7 +82,7 @@ Keep visual changes centralized where possible. Avoid hardcoding game-specific m
 
 ## Browser Debug Adapter
 
-`dev/browser.html` and `dev/browser-main.js` provide a local browser shim for faster UI checks. The browser path should mirror WeChat behavior closely enough for layout and click smoke tests, but WeChat Developer Tools remains the final runtime target.
+`dev/browser.html` and `dev/browser-main.js` provide a local browser shim for faster UI checks. The browser path mirrors WeChat behavior closely enough for layout and click smoke tests, including `pixelRatio`-aware canvas sizing and touch coordinate mapping. WeChat Developer Tools remains the final runtime target.
 
 ## Extension Checklist
 

@@ -7,9 +7,9 @@ This is a WeChat Mini Game project. The runtime entry is `game.js`, which import
 - `js/main.js`: creates the canvas context and starts the collection host.
 - `js/core/`: scene switching, input dispatch, and local score storage.
 - `js/scenes/`: top-level scenes such as the game selection menu.
-- `js/games/`: standalone games; current modules are `sudoku/` and `huarongdao/`.
+- `js/games/`: standalone games; current modules are `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, and `memory/`.
 - `js/themes/` and `js/ui/`: visual tokens and reusable canvas UI helpers.
-- `js/libs/`: third-party or vendored utilities such as `tinyemitter.js`.
+- `js/libs/`: third-party or vendored utilities (currently empty; previously held `tinyemitter.js` which was removed).
 - `dev/`: browser-only debug shell and wx/canvas adapter.
 - `ARCHITECTURE.md`: current architecture and extension boundaries.
 - `game.json`, `project.config.json`, `project.private.config.json`: Mini Game and tool configuration.
@@ -46,6 +46,9 @@ No automated test framework is configured. Validate changes in WeChat Developer 
 - The menu renders and each game card opens the correct configuration or game.
 - Sudoku supports selecting cells, entering numbers, immediate mistake marking, undo, erase, note mode, restart, result modal, and return to menu.
 - Digital Huarongdao supports size selection, click or swipe movement, restart, result modal, and return to menu.
+- Minesweeper supports difficulty selection, click to reveal, long-press to flag, win/lose detection, and return to menu.
+- 2048 supports target selection, swipe to merge tiles, win detection, and return to menu.
+- Memory supports size selection, card flip and match, completion detection, and return to menu.
 - Local scores or result metrics persist through `wx.setStorageSync` / `wx.getStorageSync` and display correctly in the menu.
 - Responsive layout remains usable on common phone heights, including small-screen cases touched by the change.
 

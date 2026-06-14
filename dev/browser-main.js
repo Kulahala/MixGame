@@ -7,11 +7,26 @@ const handlers = {
   touchcancel: [],
 };
 
+/**
+ * 根据容器 CSS 尺寸和 devicePixelRatio 调整 canvas 物理尺寸，
+ * 确保与 render.js 的 pixelRatio 方案一致。
+ */
+function resizeCanvas() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  // canvas 的 CSS 尺寸由 style 控制，与 getBoundingClientRect 一致
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
 function toTouchEvent(event, active) {
   const rect = canvas.getBoundingClientRect();
+  // clientX/Y 本身就是 CSS 逻辑像素，与 ctx.scale(pixelRatio) 后的坐标体系一致
   const touch = {
-    clientX: ((event.clientX - rect.left) / rect.width) * canvas.width,
-    clientY: ((event.clientY - rect.top) / rect.height) * canvas.height,
+    clientX: event.clientX - rect.left,
+    clientY: event.clientY - rect.top,
   };
 
   return active
@@ -54,9 +69,13 @@ globalThis.wx = {
     return canvas;
   },
   getWindowInfo() {
+    const rect = canvas.getBoundingClientRect();
     return {
-      screenWidth: canvas.width,
-      screenHeight: canvas.height,
+      windowWidth: rect.width,
+      windowHeight: rect.height,
+      screenWidth: rect.width,
+      screenHeight: rect.height,
+      pixelRatio: window.devicePixelRatio || 1,
     };
   },
   getSystemInfoSync() {

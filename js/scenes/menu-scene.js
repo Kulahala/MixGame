@@ -39,17 +39,40 @@ export default class MenuScene {
   }
 
   init() {
-    const margin = 24;
-    const cardW = this.host.width - margin * 2;
-    const top = 188;
-    const gap = 18;
-    const cardH = 128;
+    const { width, height } = this.host;
+    const count = GAMES.length;
+    const cols = count >= 3 ? 2 : 1;
+    const rows = Math.ceil(count / cols);
+
+    const isSmallScreen = height < 700;
+    const topArea = isSmallScreen ? 120 : 160;
+    const bottomArea = 42;
+
+    const margin = cols === 2 ? 16 : 24;
+    const colGap = cols === 2 ? 12 : 0;
+    const rowGap = cols === 2 ? 12 : 18;
+
+    const cardW = cols === 2
+      ? Math.floor((width - margin * 2 - colGap) / 2)
+      : width - margin * 2;
+
+    const availableHeight = height - topArea - bottomArea - rowGap * (rows - 1);
+    let cardH = Math.floor(availableHeight / rows);
+    cardH = Math.max(cardH, 80);
+    cardH = Math.min(cardH, 140);
+
+    this._layout = { cols, rows, margin, colGap, rowGap, cardW, cardH, topArea };
 
     this.cards = GAMES.map((game, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = margin + col * (cardW + colGap);
+      const y = topArea + row * (cardH + rowGap);
+
       const scoreData = this.scores[game.id];
       const btn = new Button({
-        x: margin,
-        y: top + index * (cardH + gap),
+        x,
+        y,
         w: cardW,
         h: cardH,
         label: game.name,
@@ -69,7 +92,7 @@ export default class MenuScene {
       });
       return;
     }
-    
+
     this.modal = new ConfigModal({
       host: this.host,
       title: game.configTitle || `${game.name} 配置`,
@@ -123,6 +146,7 @@ export default class MenuScene {
       exitAlpha = 1 - easeExit;
       exitOffset = -easeExit * 16;
     }
+    this._exitAlpha = exitAlpha;
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = theme.color.bg;
@@ -133,12 +157,19 @@ export default class MenuScene {
     ctx.translate(0, exitOffset);
 
     ctx.save();
-    ctx.globalAlpha = reveal;
+    ctx.globalAlpha = exitAlpha * reveal;
     ctx.translate(0, (1 - reveal) * 10);
     this.renderBackdrop(ctx);
 
-    drawText(ctx, '静游集', width / 2, 72, {
-      size: 36,
+    const layout = this._layout || { topArea: 160 };
+    const topArea = layout.topArea;
+    const titleY = Math.round(topArea * 0.38);
+    const subtitleY = Math.round(topArea * 0.62);
+    const titleSize = topArea < 140 ? 28 : 36;
+    const subtitleSize = topArea < 140 ? 13 : 14;
+
+    drawText(ctx, '静游集', width / 2, titleY, {
+      size: titleSize,
       color: theme.color.ink,
       align: 'center',
       baseline: 'middle',
@@ -146,8 +177,8 @@ export default class MenuScene {
       weight: '600',
     });
 
-    drawText(ctx, '安静一点的小游戏合集', width / 2, 112, {
-      size: 14,
+    drawText(ctx, '安静一点的小游戏合集', width / 2, subtitleY, {
+      size: subtitleSize,
       color: theme.color.muted,
       align: 'center',
       baseline: 'middle',
@@ -175,104 +206,172 @@ export default class MenuScene {
   renderBackdrop(ctx) {
     const theme = this.theme;
     const width = this.host.width;
-    fillRoundRect(ctx, 18, 28, width - 36, 112, 24, '#fbfaf6');
-    strokeRoundRect(ctx, 18, 28, width - 36, 112, 24, '#e0d8cb', 1);
+    const topArea = (this._layout && this._layout.topArea) || 160;
+
+    const frameY = Math.round(topArea * 0.15);
+    const frameH = Math.round(topArea * 0.6);
+    const frameBottom = frameY + frameH;
+    const lineY = frameBottom - 2;
+    const crossY = Math.round(frameY + frameH * 0.46);
+
+    fillRoundRect(ctx, 18, frameY, width - 36, frameH, 24, '#fbfaf6');
+    strokeRoundRect(ctx, 18, frameY, width - 36, frameH, 24, '#e0d8cb', 1);
+
     ctx.strokeStyle = '#e8e0d4';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(46, 138);
-    ctx.lineTo(width - 46, 138);
+    ctx.moveTo(46, lineY);
+    ctx.lineTo(width - 46, lineY);
     ctx.stroke();
+
+    ctx.save();
     ctx.strokeStyle = theme.color.gold;
     ctx.globalAlpha = 0.28;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(width - 78, 68);
-    ctx.lineTo(width - 48, 68);
-    ctx.moveTo(width - 63, 53);
-    ctx.lineTo(width - 63, 83);
+    ctx.moveTo(width - 78, crossY);
+    ctx.lineTo(width - 48, crossY);
+    ctx.moveTo(width - 63, crossY - 15);
+    ctx.lineTo(width - 63, crossY + 15);
     ctx.stroke();
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   renderGameCard(ctx, card, index) {
     const theme = this.theme;
     const game = GAMES[index];
     const accent = game.themeColor || theme.color.sage;
-    
+    const layout = this._layout || { cols: 1 };
+    const cols = layout.cols;
+
     // 瀑布式弹性微弹进入动效：采用 easeOutBack 轻回弹
     const t = Math.min(1, Math.max(0, (this.host.sceneAge - index * 70) / 340));
     const c1 = 0.5; // 低调的回弹幅度
     const ease = t === 1 ? 1 : 1 + (c1 + 1) * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
     const reveal = Math.min(1, t * 1.5);
 
-    const iconX = card.x + card.w - 68;
-    const iconY = card.y + 34;
     const pressDepth = card.isPressed ? 3 : 0;
     const scale = card.isPressed ? 0.985 : 1;
 
     ctx.save();
-    ctx.globalAlpha = reveal;
+    ctx.globalAlpha = this._exitAlpha * reveal;
     ctx.translate(0, (1 - ease) * 16);
     ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
     ctx.scale(scale, scale);
     ctx.translate(-card.x - card.w / 2, -card.y - card.h / 2 + pressDepth);
+
     fillRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, theme.color.paper);
     strokeRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, theme.color.line, 1);
     if (card.isPressed) {
       fillRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, 'rgba(0, 0, 0, 0.035)');
     }
+
     ctx.fillStyle = accent;
-    ctx.globalAlpha = 0.08;
+    ctx.globalAlpha = this._exitAlpha * 0.08;
     ctx.fillRect(card.x, card.y + 18, 4, card.h - 36);
-    ctx.globalAlpha = reveal;
+    ctx.globalAlpha = this._exitAlpha * reveal;
 
-    drawText(ctx, String(index + 1).padStart(2, '0'), card.x + 28, card.y + 32, {
-      size: 13,
-      color: theme.color.gold,
-      align: 'left',
-      baseline: 'middle',
-      font: theme.font.body,
-      weight: '600',
-    });
+    if (cols === 2) {
+      const padX = 12;
+      const numSize = 11;
+      const nameSize = 16;
+      const detailSize = 10;
+      const iconSize = 32;
+      const iconRadius = 6;
+      const iconX = card.x + card.w - iconSize - 10;
+      const iconY = card.y + card.h * 0.35 - iconSize / 2;
 
-    drawText(ctx, card.label, card.x + 28, card.y + 68, {
-      size: 25,
-      color: theme.color.ink,
-      align: 'left',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: '600',
-    });
+      drawText(ctx, String(index + 1).padStart(2, '0'), card.x + padX, card.y + 16, {
+        size: numSize,
+        color: theme.color.gold,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.body,
+        weight: '600',
+      });
 
-    drawText(ctx, card.detail, card.x + 28, card.y + 98, {
-      size: 13,
-      color: theme.color.muted,
-      align: 'left',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
+      drawText(ctx, card.label, card.x + padX, card.y + card.h * 0.45, {
+        size: nameSize,
+        color: theme.color.ink,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.title,
+        weight: '600',
+      });
 
-    this.renderCardMark(ctx, game, iconX, iconY, accent);
+      drawText(ctx, card.detail, card.x + padX, card.y + card.h * 0.72, {
+        size: detailSize,
+        color: theme.color.muted,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.body,
+      });
 
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(card.x + card.w - 58, card.y + 72);
-    ctx.lineTo(card.x + card.w - 31, card.y + 72);
-    ctx.lineTo(card.x + card.w - 39, card.y + 65);
-    ctx.moveTo(card.x + card.w - 31, card.y + 72);
-    ctx.lineTo(card.x + card.w - 39, card.y + 79);
-    ctx.stroke();
+      this.renderCardMark(ctx, game, iconX, iconY, accent, iconSize, iconRadius);
+
+      const arrowCx = iconX + iconSize / 2;
+      const arrowCy = iconY + iconSize + 10;
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(arrowCx - 10, arrowCy);
+      ctx.lineTo(arrowCx + 10, arrowCy);
+      ctx.lineTo(arrowCx + 2, arrowCy - 6);
+      ctx.moveTo(arrowCx + 10, arrowCy);
+      ctx.lineTo(arrowCx + 2, arrowCy + 6);
+      ctx.stroke();
+    } else {
+      const iconX = card.x + card.w - 68;
+      const iconY = card.y + 34;
+
+      drawText(ctx, String(index + 1).padStart(2, '0'), card.x + 28, card.y + 32, {
+        size: 13,
+        color: theme.color.gold,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.body,
+        weight: '600',
+      });
+
+      drawText(ctx, card.label, card.x + 28, card.y + 68, {
+        size: 25,
+        color: theme.color.ink,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.title,
+        weight: '600',
+      });
+
+      drawText(ctx, card.detail, card.x + 28, card.y + 98, {
+        size: 13,
+        color: theme.color.muted,
+        align: 'left',
+        baseline: 'middle',
+        font: theme.font.body,
+      });
+
+      this.renderCardMark(ctx, game, iconX, iconY, accent);
+
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(card.x + card.w - 58, card.y + 72);
+      ctx.lineTo(card.x + card.w - 31, card.y + 72);
+      ctx.lineTo(card.x + card.w - 39, card.y + 65);
+      ctx.moveTo(card.x + card.w - 31, card.y + 72);
+      ctx.lineTo(card.x + card.w - 39, card.y + 79);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
-  renderCardMark(ctx, game, x, y, accent) {
+  renderCardMark(ctx, game, x, y, accent, size = 36, radius = 8) {
     ctx.save();
     ctx.globalAlpha *= 0.8;
-    fillRoundRect(ctx, x, y, 36, 36, 8, accent);
-    drawText(ctx, game.iconText || '游', x + 18, y + 18 + 1, {
-      size: 20,
+    fillRoundRect(ctx, x, y, size, size, radius, accent);
+    drawText(ctx, game.iconText || '游', x + size / 2, y + size / 2 + 1, {
+      size: Math.round(size * 0.55),
       color: '#fff',
       align: 'center',
       baseline: 'middle',
@@ -304,5 +403,6 @@ export default class MenuScene {
       this.modal.destroy();
       this.modal = null;
     }
+    this.input.clear();
   }
 }
