@@ -12,6 +12,7 @@ export default class SudokuScene {
     this.host = host;
     this.theme = host.theme;
     this.board = cloneGrid(PUZZLE);
+    this.mistakeMap = PUZZLE.map((row) => row.map(() => false));
     this.fixed = PUZZLE.map((row) => row.map((value) => value !== 0));
     this.selected = { row: 0, col: 2 };
     this.mistakes = 0;
@@ -19,6 +20,8 @@ export default class SudokuScene {
     this.saved = false;
     this.startTime = Date.now();
     this.buttons = [];
+    this.pressedKey = 0;
+    this.keyPressTimer = null;
   }
 
   init() {
@@ -56,11 +59,13 @@ export default class SudokuScene {
 
   reset() {
     this.board = cloneGrid(PUZZLE);
+    this.mistakeMap = PUZZLE.map((row) => row.map(() => false));
     this.mistakes = 0;
     this.completed = false;
     this.saved = false;
     this.startTime = Date.now();
     this.selected = { row: 0, col: 2 };
+    this.pressedKey = 0;
   }
 
   update() {
@@ -156,6 +161,9 @@ export default class SudokuScene {
         if (row === this.selected.row && col === this.selected.col) {
           ctx.fillStyle = '#e7ddce';
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
+        } else if (this.mistakeMap[row][col]) {
+          ctx.fillStyle = '#f6dfdb';
+          ctx.fillRect(cellX, cellY, this.cell, this.cell);
         } else if (sameValue) {
           ctx.fillStyle = '#f1ebe1';
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
@@ -163,7 +171,7 @@ export default class SudokuScene {
         if (value) {
           drawText(ctx, String(value), cellX + this.cell / 2, cellY + this.cell / 2, {
             size: 20,
-            color: this.fixed[row][col] ? theme.color.ink : theme.color.accent,
+            color: this.getCellColor(row, col, value),
             align: 'center',
             baseline: 'middle',
             font: theme.font.body,
@@ -189,25 +197,34 @@ export default class SudokuScene {
 
   renderNumberPad(ctx) {
     const theme = this.theme;
-    const gap = 8;
-    const size = (this.boardSize - gap * 8) / 9;
+    const layout = this.getKeypadLayout();
 
-    for (let i = 1; i <= 9; i++) {
-      const x = this.boardX + (i - 1) * (size + gap);
-      const y = this.keyY;
-      fillRoundRect(ctx, x, y, size, 46, 12, theme.color.paper);
-      strokeRoundRect(ctx, x, y, size, 46, 12, theme.color.line, 1);
-      drawText(ctx, String(i), x + size / 2, y + 23, {
-        size: 18,
-        color: theme.color.ink,
-        align: 'center',
-        baseline: 'middle',
-        font: theme.font.body,
-        weight: '600',
-      });
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const value = row * 3 + col + 1;
+        const rect = this.getKeyRect(layout, row, col, value);
+        const isPressed = this.pressedKey === value;
+        const depth = isPressed ? 3 : 0;
+
+        ctx.save();
+        ctx.translate(rect.x + rect.w / 2, rect.y + rect.h / 2);
+        ctx.scale(isPressed ? 0.97 : 1, isPressed ? 0.97 : 1);
+        ctx.translate(-rect.x - rect.w / 2, -rect.y - rect.h / 2 + depth);
+        fillRoundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16, isPressed ? theme.color.paperDeep : theme.color.paper);
+        strokeRoundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16, isPressed ? theme.color.gold : theme.color.line, isPressed ? 1.6 : 1);
+        drawText(ctx, String(value), rect.x + rect.w / 2, rect.y + rect.h / 2 + 1, {
+          size: 24,
+          color: isPressed ? theme.color.accentDeep : theme.color.ink,
+          align: 'center',
+          baseline: 'middle',
+          font: theme.font.body,
+          weight: '600',
+        });
+        ctx.restore();
+      }
     }
 
-    drawText(ctx, '选格 · 入数 · 完成自动计分', this.host.width / 2, this.keyY + 74, {
+    drawText(ctx, '选格 · 入数 · 错误会标红', this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + 28, {
       size: 12,
       color: theme.color.faint,
       align: 'center',
@@ -243,7 +260,7 @@ export default class SudokuScene {
   onTouchStart(point) {
     const button = this.buttons.find((item) => item.hit(point.x, point.y));
     if (button) {
-      button.onClick();
+      button.press();
       return;
     }
 
@@ -258,26 +275,82 @@ export default class SudokuScene {
     this.handleNumberPad(point);
   }
 
+  destroy() {
+    this.buttons.forEach((button) => button.destroy && button.destroy());
+  }
+
   handleNumberPad(point) {
     if (this.completed) return;
-    const gap = 8;
-    const size = (this.boardSize - gap * 8) / 9;
-    for (let i = 1; i <= 9; i++) {
-      const rect = {
-        x: this.boardX + (i - 1) * (size + gap),
-        y: this.keyY,
-        w: size,
-        h: 46,
-      };
-      if (contains(rect, point.x, point.y)) {
-        const { row, col } = this.selected;
-        if (this.fixed[row][col]) return;
-        if (SOLUTION[row][col] !== i) {
-          this.mistakes++;
+    const layout = this.getKeypadLayout();
+    for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
+      for (let colIndex = 0; colIndex < 3; colIndex++) {
+        const i = rowIndex * 3 + colIndex + 1;
+        const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
+        if (contains(rect, point.x, point.y)) {
+          const { row, col } = this.selected;
+          if (this.fixed[row][col]) return;
+          this.pressKey(i);
+          this.board[row][col] = i;
+          this.mistakeMap[row][col] = SOLUTION[row][col] !== i;
+          if (this.mistakeMap[row][col]) {
+            this.mistakes++;
+          }
           return;
         }
-        this.board[row][col] = i;
       }
+    }
+  }
+
+  getCellColor(row, col) {
+    if (this.fixed[row][col]) {
+      return this.theme.color.ink;
+    }
+    if (this.mistakeMap[row][col]) {
+      return this.theme.color.danger;
+    }
+    return this.theme.color.accent;
+  }
+
+  pressKey(value) {
+    if (this.keyPressTimer) {
+      clearTimeout(this.keyPressTimer);
+      this.keyPressTimer = null;
+    }
+
+    this.pressedKey = value;
+    this.keyPressTimer = setTimeout(() => {
+      this.pressedKey = 0;
+      this.keyPressTimer = null;
+    }, 120);
+  }
+
+  getKeypadLayout() {
+    const gap = 10;
+    const size = Math.min(72, Math.floor((this.host.width - 96 - gap * 2) / 3));
+    const padWidth = size * 3 + gap * 2;
+    return {
+      x: (this.host.width - padWidth) / 2,
+      y: this.keyY,
+      gap,
+      size,
+    };
+  }
+
+  getKeyRect(layout, row, col, value) {
+    return {
+      x: layout.x + col * (layout.size + layout.gap),
+      y: layout.y + row * (layout.size + layout.gap),
+      w: layout.size,
+      h: layout.size,
+      value,
+    };
+  }
+
+  destroy() {
+    this.buttons.forEach((button) => button.destroy && button.destroy());
+    if (this.keyPressTimer) {
+      clearTimeout(this.keyPressTimer);
+      this.keyPressTimer = null;
     }
   }
 }

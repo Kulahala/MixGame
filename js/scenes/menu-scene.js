@@ -123,12 +123,20 @@ export default class MenuScene {
     const reveal = Math.min(1, Math.max(0, (this.host.sceneAge - index * 90) / 380));
     const iconX = card.x + card.w - 68;
     const iconY = card.y + 34;
+    const pressDepth = card.isPressed ? 3 : 0;
+    const scale = card.isPressed ? 0.985 : 1;
 
     ctx.save();
     ctx.globalAlpha = reveal;
     ctx.translate(0, (1 - reveal) * 16);
+    ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
+    ctx.scale(scale, scale);
+    ctx.translate(-card.x - card.w / 2, -card.y - card.h / 2 + pressDepth);
     fillRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, theme.color.paper);
     strokeRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, theme.color.line, 1);
+    if (card.isPressed) {
+      fillRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, 'rgba(0, 0, 0, 0.035)');
+    }
     ctx.fillStyle = accent;
     ctx.globalAlpha = 0.08;
     ctx.fillRect(card.x, card.y + 18, 4, card.h - 36);
@@ -210,7 +218,11 @@ export default class MenuScene {
   onTouchStart(point) {
     const card = this.cards.find((item) => item.hit(point.x, point.y));
     if (card) {
-      card.onClick();
+      card.press();
     }
+  }
+
+  destroy() {
+    this.cards.forEach((card) => card.destroy && card.destroy());
   }
 }

@@ -231,7 +231,7 @@ export default class HuarongdaoScene {
   onTouchStart(point) {
     const button = this.buttons.find((item) => item.hit(point.x, point.y));
     if (button) {
-      button.onClick();
+      button.press();
       return;
     }
 
@@ -249,6 +249,10 @@ export default class HuarongdaoScene {
     }
 
     this.tryMoveSelected(gridX, gridY);
+  }
+
+  destroy() {
+    this.buttons.forEach((button) => button.destroy && button.destroy());
   }
 
   findPieceAt(x, y) {

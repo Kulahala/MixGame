@@ -65,6 +65,14 @@ export default class GameHost {
     }
   }
 
+  defer(action, delay = 90) {
+    setTimeout(() => {
+      if (typeof action === 'function') {
+        action();
+      }
+    }, delay);
+  }
+
   loop(timestamp) {
     const dt = Math.min(50, timestamp - (this.lastTime || timestamp));
     this.lastTime = timestamp;
