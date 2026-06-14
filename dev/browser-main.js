@@ -103,4 +103,4 @@ globalThis.wx = {
   },
 };
 
-await import('../game.js');
+import('../game.js');

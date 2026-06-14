@@ -370,7 +370,7 @@ export default class MenuScene {
     fillRoundRect(ctx, x, y, size, size, radius, accent);
     drawText(ctx, game.iconText || '游', x + size / 2, y + size / 2 + 1, {
       size: Math.round(size * 0.55),
-      color: theme.color.white,
+      color: this.theme.color.white,
       align: 'center',
       baseline: 'middle',
       font: this.theme.font.body,
