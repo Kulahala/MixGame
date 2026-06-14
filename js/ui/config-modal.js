@@ -83,9 +83,10 @@ export default class ConfigModal {
 
     if (this.isClosing) {
       this.animTime = Math.max(0, this.animTime - dt);
-      const progress = this.animTime / this.animDuration;
-      this.alpha = progress;
-      this.scale = 0.82 + 0.18 * progress;
+      const progress = this.animTime / this.animDuration; // 从 1 降到 0
+      const ease = progress * progress; // ease-in quad
+      this.alpha = ease;
+      this.scale = 0.8 + 0.2 * ease;
       if (this.animTime === 0 && this.closeCallback) {
         const cb = this.closeCallback;
         this.closeCallback = null;
@@ -94,10 +95,14 @@ export default class ConfigModal {
     } else {
       if (this.animTime < this.animDuration) {
         this.animTime = Math.min(this.animDuration, this.animTime + dt);
-        const progress = this.animTime / this.animDuration;
-        const ease = progress * (2 - progress); // ease-out quad
-        this.alpha = ease;
-        this.scale = 0.82 + 0.18 * ease;
+        const progress = this.animTime / this.animDuration; // 从 0 升到 1
+        
+        // easeOutBack 弹性曲线
+        const c1 = 1.0; // 缓和的弹性系数
+        const ease = 1 + (c1 + 1) * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
+        
+        this.alpha = Math.min(1, progress * 1.4); // 稍微提前淡入完毕
+        this.scale = 0.8 + 0.2 * ease;
       }
     }
 

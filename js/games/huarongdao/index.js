@@ -24,11 +24,8 @@ export default class HuarongdaoScene {
     this.boardX = (width - this.boardSize) / 2;
     this.boardY = 164;
     
-    // 初始化所有方块渲染偏移量
-    this.tileOffsets = {};
-    for (let i = 1; i < this.state.size * this.state.size; i++) {
-      this.tileOffsets[i] = { offsetX: 0, offsetY: 0 };
-    }
+    // 初始化所有方块渲染动画状态
+    this.tileAnimations = {};
 
     this.setupButtons();
   }
@@ -63,11 +60,8 @@ export default class HuarongdaoScene {
       this.input.remove(this.modal);
       this.modal = null;
     }
-    // 重置所有偏移量
-    this.tileOffsets = {};
-    for (let i = 1; i < this.state.size * this.state.size; i++) {
-      this.tileOffsets[i] = { offsetX: 0, offsetY: 0 };
-    }
+    // 重置所有动画状态
+    this.tileAnimations = {};
   }
 
   getTilePositions() {
@@ -94,9 +88,14 @@ export default class HuarongdaoScene {
         if (oldP && (oldP.r !== newP.r || oldP.c !== newP.c)) {
           const diffC = oldP.c - newP.c;
           const diffR = oldP.r - newP.r;
-          this.tileOffsets[val] = {
-            offsetX: diffC * this.cell,
-            offsetY: diffR * this.cell
+          
+          this.tileAnimations[val] = {
+            startX: diffC * this.cell,
+            startY: diffR * this.cell,
+            currentX: diffC * this.cell,
+            currentY: diffR * this.cell,
+            time: 0,
+            duration: 160 // 160ms 动画时长
           };
         }
       }
@@ -123,28 +122,21 @@ export default class HuarongdaoScene {
       this.input.add(this.modal);
     }
 
-    // 每一帧平滑地更新方块渲染偏移量，向 0 逼近
-    // 在 130ms 内完成一个 cell 宽度的移动
-    const speed = this.cell / 130; // 像素/毫秒
-    for (let val in this.tileOffsets) {
-      const offset = this.tileOffsets[val];
-      if (offset.offsetX !== 0) {
-        const dir = offset.offsetX > 0 ? -1 : 1;
-        const step = dir * speed * dt;
-        if (Math.abs(step) >= Math.abs(offset.offsetX)) {
-          offset.offsetX = 0;
-        } else {
-          offset.offsetX += step;
-        }
-      }
-      if (offset.offsetY !== 0) {
-        const dir = offset.offsetY > 0 ? -1 : 1;
-        const step = dir * speed * dt;
-        if (Math.abs(step) >= Math.abs(offset.offsetY)) {
-          offset.offsetY = 0;
-        } else {
-          offset.offsetY += step;
-        }
+    // 每一帧平滑地更新方块渲染动画偏移量
+    for (let val in this.tileAnimations) {
+      const anim = this.tileAnimations[val];
+      anim.time = Math.min(anim.duration, anim.time + dt);
+      const progress = anim.time / anim.duration;
+      
+      // 使用 easeOutCubic 曲线：f(t) = 1 - (1 - t)^3
+      // 这会让方块在滑动的后半段带有极度丝滑优雅的摩擦阻尼感
+      const ease = 1 - Math.pow(1 - progress, 3);
+      
+      anim.currentX = anim.startX * (1 - ease);
+      anim.currentY = anim.startY * (1 - ease);
+      
+      if (anim.time >= anim.duration) {
+        delete this.tileAnimations[val];
       }
     }
   }
@@ -203,9 +195,11 @@ export default class HuarongdaoScene {
         const val = this.state.grid[r][c];
         if (val === 0) continue;
         
-        const offset = this.tileOffsets[val] || { offsetX: 0, offsetY: 0 };
-        const cellX = x + c * this.cell + padding + offset.offsetX;
-        const cellY = y + r * this.cell + padding + offset.offsetY;
+        const anim = this.tileAnimations[val];
+        const offsetX = anim ? anim.currentX : 0;
+        const offsetY = anim ? anim.currentY : 0;
+        const cellX = x + c * this.cell + padding + offsetX;
+        const cellY = y + r * this.cell + padding + offsetY;
 
         const isCorrect = val === r * this.state.size + c + 1;
         const bg = isCorrect ? theme.color.sage : theme.color.ink;
