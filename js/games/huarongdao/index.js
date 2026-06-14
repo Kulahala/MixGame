@@ -1,4 +1,5 @@
 import Button from '../../ui/button.js';
+import ResultModal from '../../ui/result-modal.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import HuarongdaoState from './state.js';
 import InputDispatcher from '../../core/input-dispatcher.js';
@@ -44,10 +45,18 @@ export default class HuarongdaoScene {
       h: 36,
       label: '重开',
       variant: 'ghost',
-      onClick: () => this.state.reset(),
+      onClick: () => this.reset(),
     });
     this.buttons = [this.backButton, this.resetButton];
     this.buttons.forEach(b => this.input.add(b));
+  }
+
+  reset() {
+    this.state.reset();
+    if (this.modal) {
+      this.input.remove(this.modal);
+      this.modal = null;
+    }
   }
 
   update() {
@@ -55,6 +64,18 @@ export default class HuarongdaoScene {
       this.state.completed = true;
       this.state.saveResult();
       this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
+
+      this.modal = new ResultModal({
+        host: this.host,
+        title: '恭喜通关！',
+        stats: [
+          `用时：${this.state.getElapsed()}s`,
+          `总步数：${this.state.steps}步`
+        ],
+        onMenu: () => this.host.showMenu(),
+        onRestart: () => this.reset()
+      });
+      this.input.add(this.modal);
     }
   }
 
@@ -71,8 +92,8 @@ export default class HuarongdaoScene {
     this.buttons.forEach(b => b.render(ctx, theme));
     this.renderHeader(ctx);
     this.renderBoard(ctx);
-    if (this.state.completed) {
-      this.renderComplete(ctx);
+    if (this.modal) {
+      this.modal.render(ctx, theme);
     }
     ctx.restore();
   }
@@ -131,29 +152,6 @@ export default class HuarongdaoScene {
     }
   }
 
-  renderComplete(ctx) {
-    const theme = this.theme;
-    const w = this.host.width - 48;
-    const h = 86;
-    const x = 24;
-    const y = this.host.height - h - 30;
-    fillRoundRect(ctx, x, y, w, h, 20, theme.color.ink);
-    drawText(ctx, '通关', this.host.width / 2, y + 28, {
-      size: 20,
-      color: theme.color.white,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: '600',
-    });
-    drawText(ctx, `得分 ${Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps * 10)} · 已保存`, this.host.width / 2, y + 56, {
-      size: 13,
-      color: '#e8e2d9',
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
-  }
 
   onTouchStart(point) {
     if (this.input.onTouchStart(point.x, point.y)) return;
@@ -204,5 +202,8 @@ export default class HuarongdaoScene {
 
   destroy() {
     this.buttons.forEach((b) => b.destroy && b.destroy());
+    if (this.modal) {
+      this.modal.destroy();
+    }
   }
 }

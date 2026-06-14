@@ -14,6 +14,7 @@ export default class SudokuBoardState {
     this.fixed = initialPuzzle.map((row) => row.map((value) => value !== 0));
     
     this.mistakes = 0;
+    this.fills = 0;
     this.history = [];
     this.isNoteMode = false;
     this.notesMap = Array.from({length: 9}, () => Array(9).fill().map(() => []));
@@ -56,12 +57,11 @@ export default class SudokuBoardState {
 
     this.board[r][c] = val;
     this.notesMap[r][c] = []; // 填入真实数字时清空草稿
-    if (val !== this.solution[r][c]) {
-      this.mistakeMap[r][c] = true;
+    this.mistakeMap[r][c] = (val !== this.solution[r][c]); // 恢复即时标红
+    if (this.mistakeMap[r][c]) {
       this.mistakes++;
-    } else {
-      this.mistakeMap[r][c] = false;
     }
+    this.fills++;
     return true;
   }
 
@@ -105,6 +105,21 @@ export default class SudokuBoardState {
     return true;
   }
 
+  checkMistakes() {
+    let newlyFoundMistake = false;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (this.board[r][c] !== 0 && this.board[r][c] !== this.solution[r][c]) {
+          if (!this.mistakeMap[r][c]) {
+            this.mistakeMap[r][c] = true;
+            newlyFoundMistake = true;
+          }
+        }
+      }
+    }
+    return newlyFoundMistake;
+  }
+
   isSolved() {
     for (let r = 0; r < 9; r++) {
       for (let c = 0; c < 9; c++) {
@@ -116,7 +131,7 @@ export default class SudokuBoardState {
 
   getScore() {
     const timeSpent = this.getTimeSpent();
-    return Math.max(0, 10000 - timeSpent * 10 - this.mistakes * 200);
+    return Math.max(0, 10000 - timeSpent * 10 - this.fills * 20);
   }
 
   saveResult() {

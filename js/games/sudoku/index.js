@@ -1,4 +1,5 @@
 import Button from '../../ui/button.js';
+import ResultModal from '../../ui/result-modal.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import { PUZZLE, SOLUTION } from './puzzle.js';
 import { generateSudoku } from './generator.js';
@@ -30,11 +31,32 @@ export default class SudokuScene {
 
   init() {
     const width = this.host.width;
-    this.boardSize = Math.min(width - 32, 342);
+    const height = this.host.height;
+    
+    let boardMargin = 32;
+    let topMargin = 140;
+    if (height < 700) {
+      boardMargin = 60;
+      topMargin = 70;
+    }
+    if (height < 600) {
+      boardMargin = 64; // 给盘面更多缩放
+      topMargin = 55; // Header被压得更扁，棋盘继续上移
+    }
+
+    this.boardSize = Math.min(width - boardMargin, 342);
+    if (height < 700 && this.boardSize > 280) this.boardSize = 280;
+    if (height < 600 && this.boardSize > 240) this.boardSize = 240;
+
     this.cell = this.boardSize / 9;
     this.boardX = (width - this.boardSize) / 2;
-    this.boardY = 164;
-    this.keyY = this.boardY + this.boardSize + 22;
+    this.boardY = topMargin;
+    
+    // 工具按钮所在行
+    this.actionBtnY = this.boardY + this.boardSize + (height < 600 ? 10 : 16);
+    // 数字键盘所在行
+    this.keyY = this.actionBtnY + 36 + (height < 600 ? 10 : 12);
+    
     this.setupButtons();
   }
 
@@ -59,8 +81,8 @@ export default class SudokuScene {
       onClick: () => this.reset(),
     });
     this.undoButton = new Button({
-      x: width / 2 - 80,
-      y: 34,
+      x: width / 2 - 123,
+      y: this.actionBtnY,
       w: 74,
       h: 36,
       label: '撤销',
@@ -72,8 +94,8 @@ export default class SudokuScene {
       },
     });
     this.eraseButton = new Button({
-      x: width / 2 + 6,
-      y: 34,
+      x: width / 2 - 37,
+      y: this.actionBtnY,
       w: 74,
       h: 36,
       label: '擦除',
@@ -81,10 +103,10 @@ export default class SudokuScene {
       onClick: () => this.state.erase(this.selected.row, this.selected.col),
     });
     this.noteButton = new Button({
-      x: width / 2 - 37,
-      y: this.keyY - 44,
+      x: width / 2 + 49,
+      y: this.actionBtnY,
       w: 74,
-      h: 32,
+      h: 36,
       label: '笔记',
       variant: 'ghost',
       onClick: () => {
@@ -104,13 +126,38 @@ export default class SudokuScene {
     this.pressedKey = 0;
     this.noteButton.label = '笔记';
     this.noteButton.variant = 'ghost';
+    if (this.modal) {
+      this.input.remove(this.modal);
+      this.modal = null;
+    }
   }
 
   update() {
-    if (!this.state.completed && this.state.isBoardFull() && this.state.isSolved()) {
-      this.state.completed = true;
-      this.state.saveResult();
-      this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
+    if (!this.state.completed && this.state.isBoardFull()) {
+      if (this.state.isSolved()) {
+        this.state.completed = true;
+        this.state.saveResult();
+        this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
+        
+        this.modal = new ResultModal({
+          host: this.host,
+          title: '恭喜通关！',
+          stats: [
+            `用时：${this.state.getTimeSpent()}s`,
+            `累计填写：${this.state.fills}次`
+          ],
+          onMenu: () => this.host.showMenu(),
+          onRestart: () => this.reset()
+        });
+        this.input.add(this.modal);
+
+      } else {
+        if (this.state.checkMistakes()) {
+          if (typeof wx !== 'undefined' && wx.vibrateShort) {
+            wx.vibrateShort({ type: 'medium' });
+          }
+        }
+      }
     }
   }
 
@@ -132,29 +179,37 @@ export default class SudokuScene {
     this.renderHeader(ctx);
     this.renderBoard(ctx);
     this.renderNumberPad(ctx);
-    if (this.state.completed) {
-      this.renderComplete(ctx);
+    if (this.modal) {
+      this.modal.render(ctx, theme);
     }
     ctx.restore();
   }
 
   renderHeader(ctx) {
     const theme = this.theme;
-    drawText(ctx, '数独', this.host.width / 2, 52, {
-      size: 25,
+    const isSmall = this.host.height < 700;
+    const isTiny = this.host.height < 600;
+    const titleY = isTiny ? 25 : (isSmall ? 32 : 52);
+    const subY = isTiny ? 42 : (isSmall ? 52 : 102);
+
+    drawText(ctx, '经典数独', this.host.width / 2, titleY, {
+      size: isSmall ? 20 : 25,
       color: theme.color.ink,
       align: 'center',
       baseline: 'middle',
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `用时 ${this.state.getTimeSpent()}s · 累计错误 ${this.state.mistakes}`, this.host.width / 2, 102, {
-      size: 13,
-      color: theme.color.muted,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
+    
+    if (!isTiny) {
+      drawText(ctx, `用时 ${this.state.getTimeSpent()}s · 累计填写 ${this.state.fills}`, this.host.width / 2, subY, {
+        size: 13,
+        color: theme.color.muted,
+        align: 'center',
+        baseline: 'middle',
+        font: theme.font.body,
+      });
+    }
   }
 
   renderBoard(ctx) {
@@ -251,7 +306,7 @@ export default class SudokuScene {
       }
     }
 
-    drawText(ctx, '选格 · 入数 · 错误会标红', this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + 28, {
+    drawText(ctx, '选格 · 入数 · 错误会标红', this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + (this.host.height < 600 ? 18 : 28), {
       size: 12,
       color: theme.color.faint,
       align: 'center',
@@ -260,29 +315,7 @@ export default class SudokuScene {
     });
   }
 
-  renderComplete(ctx) {
-    const theme = this.theme;
-    const w = this.host.width - 48;
-    const h = 86;
-    const x = 24;
-    const y = this.host.height - h - 30;
-    fillRoundRect(ctx, x, y, w, h, 20, theme.color.ink);
-    drawText(ctx, '完成', this.host.width / 2, y + 28, {
-      size: 20,
-      color: theme.color.white,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: '600',
-    });
-    drawText(ctx, `得分 ${this.state.getScore()} · 已保存到本地`, this.host.width / 2, y + 56, {
-      size: 13,
-      color: '#e8e2d9',
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
-  }
+
 
   onTouchStart(point) {
     if (this.input.onTouchStart(point.x, point.y)) return;
@@ -340,8 +373,12 @@ export default class SudokuScene {
   }
 
   getKeypadLayout() {
-    const gap = 10;
-    const size = Math.min(72, Math.floor((this.host.width - 96 - gap * 2) / 3));
+    const isTiny = this.host.height < 600;
+    const gap = isTiny ? 6 : 10;
+    let maxKeySize = 72;
+    if (this.host.height < 700) maxKeySize = 56;
+    if (isTiny) maxKeySize = 48;
+    const size = Math.min(maxKeySize, Math.floor((this.host.width - 96 - gap * 2) / 3));
     const padWidth = size * 3 + gap * 2;
     return {
       x: (this.host.width - padWidth) / 2,
@@ -363,6 +400,9 @@ export default class SudokuScene {
 
   destroy() {
     this.buttons.forEach((button) => button.destroy && button.destroy());
+    if (this.modal) {
+      this.modal.destroy();
+    }
     if (this.keyPressTimer) {
       clearTimeout(this.keyPressTimer);
       this.keyPressTimer = null;
