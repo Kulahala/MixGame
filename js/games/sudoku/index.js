@@ -55,7 +55,7 @@ export default class SudokuScene extends BaseGameScene {
 
     // 创建底部操作按钮
     this.undoButton = new Button({
-      x: width / 2 - 123,
+      x: width / 2 - 80,
       y: this.actionBtnY,
       w: 74,
       h: 36,
@@ -63,21 +63,12 @@ export default class SudokuScene extends BaseGameScene {
       variant: 'ghost',
       onClick: () => {
         if (this.state.undo()) {
-          // 这里可以额外做一些撤销后的UI反馈
+          // 撤销后的UI反馈可在此扩展
         }
       },
     });
-    this.eraseButton = new Button({
-      x: width / 2 - 37,
-      y: this.actionBtnY,
-      w: 74,
-      h: 36,
-      label: '擦除',
-      variant: 'ghost',
-      onClick: () => this.state.erase(this.selected.row, this.selected.col),
-    });
     this.noteButton = new Button({
-      x: width / 2 + 49,
+      x: width / 2 + 6,
       y: this.actionBtnY,
       w: 74,
       h: 36,
@@ -90,7 +81,7 @@ export default class SudokuScene extends BaseGameScene {
       },
     });
 
-    this.createTopButtons([this.undoButton, this.eraseButton, this.noteButton]);
+    this.createTopButtons([this.undoButton, this.noteButton]);
   }
 
   reset() {
