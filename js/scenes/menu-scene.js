@@ -146,8 +146,6 @@ export default class MenuScene {
       exitAlpha = 1 - easeExit;
       exitOffset = -easeExit * 16;
     }
-    this._exitAlpha = exitAlpha;
-
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = theme.color.bg;
     ctx.fillRect(0, 0, width, height);
@@ -186,7 +184,7 @@ export default class MenuScene {
     });
     ctx.restore();
 
-    this.cards.forEach((card, index) => this.renderGameCard(ctx, card, index));
+    this.cards.forEach((card, index) => this.renderGameCard(ctx, card, index, exitAlpha));
 
     drawText(ctx, '本地计分 · 无排行 · 后续可接难度选项', width / 2, height - 42, {
       size: 12,
@@ -214,10 +212,10 @@ export default class MenuScene {
     const lineY = frameBottom - 2;
     const crossY = Math.round(frameY + frameH * 0.46);
 
-    fillRoundRect(ctx, 18, frameY, width - 36, frameH, 24, '#fbfaf6');
-    strokeRoundRect(ctx, 18, frameY, width - 36, frameH, 24, '#e0d8cb', 1);
+    fillRoundRect(ctx, 18, frameY, width - 36, frameH, 24, theme.color.paper);
+    strokeRoundRect(ctx, 18, frameY, width - 36, frameH, 24, theme.color.line, 1);
 
-    ctx.strokeStyle = '#e8e0d4';
+    ctx.strokeStyle = theme.color.line;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(46, lineY);
@@ -237,7 +235,7 @@ export default class MenuScene {
     ctx.restore();
   }
 
-  renderGameCard(ctx, card, index) {
+  renderGameCard(ctx, card, index, exitAlpha) {
     const theme = this.theme;
     const game = GAMES[index];
     const accent = game.themeColor || theme.color.sage;
@@ -254,7 +252,7 @@ export default class MenuScene {
     const scale = card.isPressed ? 0.985 : 1;
 
     ctx.save();
-    ctx.globalAlpha = this._exitAlpha * reveal;
+    ctx.globalAlpha = exitAlpha * reveal;
     ctx.translate(0, (1 - ease) * 16);
     ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
     ctx.scale(scale, scale);
@@ -267,9 +265,9 @@ export default class MenuScene {
     }
 
     ctx.fillStyle = accent;
-    ctx.globalAlpha = this._exitAlpha * 0.08;
+    ctx.globalAlpha = exitAlpha * 0.08;
     ctx.fillRect(card.x, card.y + 18, 4, card.h - 36);
-    ctx.globalAlpha = this._exitAlpha * reveal;
+    ctx.globalAlpha = exitAlpha * reveal;
 
     if (cols === 2) {
       const padX = 12;
@@ -372,7 +370,7 @@ export default class MenuScene {
     fillRoundRect(ctx, x, y, size, size, radius, accent);
     drawText(ctx, game.iconText || '游', x + size / 2, y + size / 2 + 1, {
       size: Math.round(size * 0.55),
-      color: '#fff',
+      color: theme.color.white,
       align: 'center',
       baseline: 'middle',
       font: this.theme.font.body,

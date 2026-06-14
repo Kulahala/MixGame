@@ -55,6 +55,9 @@ export default class SudokuScene extends BaseGameScene {
     // 数字键盘所在行
     this.keyY = this.actionBtnY + 36 + (height < 600 ? 10 : 12);
 
+    // 缓存键盘布局
+    this._cacheKeypadLayout();
+
     // 创建底部操作按钮
     this.undoButton = new Button({
       x: width / 2 - 80,
@@ -171,13 +174,13 @@ export default class SudokuScene extends BaseGameScene {
         const value = this.state.board[row][col];
         const sameValue = selectedValue && value === selectedValue;
         if (row === this.selected.row && col === this.selected.col) {
-          ctx.fillStyle = '#e7ddce';
+          ctx.fillStyle = theme.color.selected;
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
         } else if (this.state.mistakeMap[row][col]) {
-          ctx.fillStyle = '#f6dfdb';
+          ctx.fillStyle = theme.color.dangerLight;
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
         } else if (sameValue) {
-          ctx.fillStyle = '#f1ebe1';
+          ctx.fillStyle = theme.color.highlight;
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
         }
         if (value) {
@@ -275,6 +278,26 @@ export default class SudokuScene extends BaseGameScene {
     this.handleNumberPad(point);
   }
 
+  onTouchEnd(point) {
+    if (this.isExiting) return;
+    this.input.onTouchEnd(point.x, point.y);
+
+    if (this.state.completed) return;
+
+    // 检测是否仍在数字键盘区域内，是则填数
+    const layout = this.getKeypadLayout();
+    for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
+      for (let colIndex = 0; colIndex < 3; colIndex++) {
+        const i = rowIndex * 3 + colIndex + 1;
+        const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
+        if (contains(rect, point.x, point.y)) {
+          this.state.fillNumber(this.selected.row, this.selected.col, i);
+          return;
+        }
+      }
+    }
+  }
+
   handleNumberPad(point) {
     if (this.state.completed) return;
     const layout = this.getKeypadLayout();
@@ -284,7 +307,6 @@ export default class SudokuScene extends BaseGameScene {
         const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
         if (contains(rect, point.x, point.y)) {
           this.pressKey(i);
-          this.state.fillNumber(this.selected.row, this.selected.col, i);
           return;
         }
       }
@@ -308,7 +330,7 @@ export default class SudokuScene extends BaseGameScene {
     }, 120);
   }
 
-  getKeypadLayout() {
+  _cacheKeypadLayout() {
     const isTiny = this.host.height < 600;
     const gap = isTiny ? 6 : 10;
     let maxKeySize = 72;
@@ -316,22 +338,33 @@ export default class SudokuScene extends BaseGameScene {
     if (isTiny) maxKeySize = 48;
     const size = Math.min(maxKeySize, Math.floor((this.host.width - 96 - gap * 2) / 3));
     const padWidth = size * 3 + gap * 2;
-    return {
+    this._keypadLayout = {
       x: (this.host.width - padWidth) / 2,
       y: this.keyY,
       gap,
       size,
     };
+    this._keyRects = [];
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        const value = row * 3 + col + 1;
+        this._keyRects.push({
+          x: this._keypadLayout.x + col * (this._keypadLayout.size + this._keypadLayout.gap),
+          y: this._keypadLayout.y + row * (this._keypadLayout.size + this._keypadLayout.gap),
+          w: this._keypadLayout.size,
+          h: this._keypadLayout.size,
+          value,
+        });
+      }
+    }
+  }
+
+  getKeypadLayout() {
+    return this._keypadLayout;
   }
 
   getKeyRect(layout, row, col, value) {
-    return {
-      x: layout.x + col * (layout.size + layout.gap),
-      y: layout.y + row * (layout.size + layout.gap),
-      w: layout.size,
-      h: layout.size,
-      value,
-    };
+    return this._keyRects[row * 3 + col];
   }
 
   destroy() {

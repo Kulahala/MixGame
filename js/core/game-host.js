@@ -16,12 +16,13 @@ export default class GameHost {
     this.lastTime = 0;
     this.sceneAge = 0;
     this.effects = { confetti: new Confetti(this) };
+    this._boundLoop = this.loop.bind(this);
     this.bindTouchEvents();
   }
 
   start() {
     this.showMenu();
-    this.aniId = requestAnimationFrame(this.loop.bind(this));
+    this.aniId = requestAnimationFrame(this._boundLoop);
   }
 
   bindTouchEvents() {
@@ -96,6 +97,6 @@ export default class GameHost {
       if (effect.render) effect.render(this.ctx);
     });
 
-    this.aniId = requestAnimationFrame(this.loop.bind(this));
+    this.aniId = requestAnimationFrame(this._boundLoop);
   }
 }

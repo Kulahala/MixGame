@@ -157,12 +157,7 @@ export default class MemoryScene extends BaseGameScene {
         ctx.save();
 
         // 3D flip effect: scaleX based on progress
-        let scaleX;
-        if (progress < 0.5) {
-          scaleX = 1 - progress / 0.5; // 1 → 0 (back visible)
-        } else {
-          scaleX = (progress - 0.5) / 0.5; // 0 → 1 (front visible)
-        }
+        const scaleX = Math.abs(1 - 2 * progress);
 
         ctx.translate(cx, 0);
         ctx.scale(Math.max(0, scaleX), 1);

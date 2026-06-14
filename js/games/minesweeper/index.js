@@ -24,6 +24,8 @@ export default class MinesweeperScene extends BaseGameScene {
     this.state = new MinesweeperState(rows, cols, mines);
     this.isFlagMode = false;
     this.resultShown = false;
+    this.longPressTimer = null;
+    this.longPressTriggered = false;
   }
 
   init() {
@@ -209,7 +211,7 @@ export default class MinesweeperScene extends BaseGameScene {
     ctx.lineTo(poleX, cy + size * 0.35);
     ctx.stroke();
     // 旗面（三角）
-    ctx.fillStyle = '#c0392b';
+    ctx.fillStyle = this.theme.color.danger;
     ctx.beginPath();
     ctx.moveTo(poleX, cy - size * 0.3);
     ctx.lineTo(poleX + size * 0.6, cy - size * 0.05);
@@ -231,26 +233,80 @@ export default class MinesweeperScene extends BaseGameScene {
 
       if (row < 0 || row >= state.rows || col < 0 || col >= state.cols) return;
 
-      if (this.isFlagMode) {
+      // 记录触摸起始位置，用于长按检测
+      this._touchStartX = point.x;
+      this._touchStartY = point.y;
+      this._touchRow = row;
+      this._touchCol = col;
+      this.longPressTriggered = false;
+
+      // 启动长按定时器（400ms），长按固定插旗/取消旗，不受当前模式影响
+      this.longPressTimer = setTimeout(() => {
+        this.longPressTriggered = true;
+        this.longPressTimer = null;
         state.toggleFlag(row, col);
-      } else {
-        state.reveal(row, col);
-      }
+      }, 400);
     }
   }
 
   onTouchMove(point) {
     if (this.isExiting) return;
     this.input.onTouchMove(point.x, point.y);
+
+    // 手指移动超过 12px 取消长按定时器
+    if (this.longPressTimer !== null && this._touchStartX !== undefined) {
+      const dx = point.x - this._touchStartX;
+      const dy = point.y - this._touchStartY;
+      if (Math.sqrt(dx * dx + dy * dy) > 12) {
+        clearTimeout(this.longPressTimer);
+        this.longPressTimer = null;
+      }
+    }
   }
 
   onTouchEnd(point) {
     if (this.isExiting) return;
     this.input.onTouchEnd(point.x, point.y);
+
+    // 清理定时器
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+
+    // 长按已触发 → 跳过短按逻辑
+    if (this.longPressTriggered) {
+      this.longPressTriggered = false;
+      this._touchRow = undefined;
+      this._touchCol = undefined;
+      this._touchStartX = undefined;
+      this._touchStartY = undefined;
+      return;
+    }
+
+    // 短按：根据当前模式执行操作
+    if (this._touchRow !== undefined && this._touchCol !== undefined) {
+      const { state } = this;
+      const row = this._touchRow;
+      const col = this._touchCol;
+      if (this.isFlagMode) {
+        state.toggleFlag(row, col);
+      } else {
+        state.reveal(row, col);
+      }
+    }
+
+    this._touchRow = undefined;
+    this._touchCol = undefined;
+    this._touchStartX = undefined;
+    this._touchStartY = undefined;
   }
 
   destroy() {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
     super.destroy();
-    // BaseGameScene.destroy 已清理 buttons 和 modal
   }
 }

@@ -166,8 +166,6 @@ export default class BaseGameScene {
       exitAlpha = 1 - easeExit;
       exitOffset = easeExit * 16;
     }
-    this._exitAlpha = exitAlpha;
-
     // 背景
     ctx.clearRect(0, 0, this.host.width, this.host.height);
     ctx.fillStyle = theme.color.bg;

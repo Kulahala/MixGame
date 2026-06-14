@@ -196,7 +196,7 @@ export default class HuarongdaoScene extends BaseGameScene {
       const dy = point.y - this.touchStartPoint.y;
       
       const dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist < 10) {
+      if (dist < 16) {
         // Click
         this.moveTile(this.touchStartGrid.r, this.touchStartGrid.c);
       } else {

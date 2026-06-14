@@ -14,6 +14,7 @@ export default class MinesweeperState {
     this.startTime = Date.now();
     this.firstClick = true; // 首点安全
     this.steps = 0;
+    this.flagCount = 0;
 
     this.initGrid();
   }
@@ -108,6 +109,11 @@ export default class MinesweeperState {
   toggleFlag(row, col) {
     if (this.completed || this.revealed[row][col]) return 'blocked';
     this.flagged[row][col] = !this.flagged[row][col];
+    if (this.flagged[row][col]) {
+      this.flagCount++;
+    } else {
+      this.flagCount--;
+    }
     return this.flagged[row][col] ? 'flagged' : 'unflagged';
   }
 
@@ -135,13 +141,7 @@ export default class MinesweeperState {
   }
 
   getFlagCount() {
-    let count = 0;
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        if (this.flagged[r][c]) count++;
-      }
-    }
-    return count;
+    return this.flagCount;
   }
 
   saveResult() {

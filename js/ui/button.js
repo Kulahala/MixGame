@@ -54,9 +54,10 @@ export default class Button {
 
   render(ctx, theme) {
     const isPrimary = this.variant === 'primary';
+    const isSecondary = this.variant === 'secondary';
     const isGhost = this.variant === 'ghost';
-    const bg = isPrimary ? theme.color.ink : isGhost ? theme.color.paper : theme.color.paperDeep;
-    const border = isPrimary ? theme.color.ink : theme.color.line;
+    const bg = isPrimary ? theme.color.ink : isSecondary ? theme.color.sage : theme.color.paper;
+    const border = isPrimary ? theme.color.ink : isSecondary ? theme.color.sage : theme.color.line;
     const text = isPrimary ? theme.color.white : theme.color.ink;
     const pressDepth = this.isPressed ? 2 : 0;
     const scale = this.isPressed ? 0.985 : 1;

@@ -1,5 +1,5 @@
 import Button from './button.js';
-import { contains, drawText, fillRoundRect, strokeRoundRect } from './canvas.js';
+import { drawText, fillRoundRect, strokeRoundRect } from './canvas.js';
 
 export default class ResultModal {
   constructor(options) {
