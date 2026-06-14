@@ -27,6 +27,18 @@ export default class SudokuScene {
     this.pressedKey = 0;
     this.keyPressTimer = null;
     this.input = new InputDispatcher();
+
+    // Exit Animation States
+    this.isExiting = false;
+    this.exitTime = 0;
+    this.exitDuration = 200; // ms
+    this.exitCallback = null;
+  }
+
+  exit(callback) {
+    this.isExiting = true;
+    this.exitTime = 0;
+    this.exitCallback = callback;
   }
 
   init() {
@@ -69,7 +81,7 @@ export default class SudokuScene {
       h: 36,
       label: '返回',
       variant: 'ghost',
-      onClick: () => this.host.showMenu(),
+      onClick: () => this.exit(() => this.host.showMenu()),
     });
     this.resetButton = new Button({
       x: width - 92,
@@ -132,7 +144,17 @@ export default class SudokuScene {
     }
   }
 
-  update() {
+  update(dt = 16) {
+    if (this.isExiting) {
+      this.exitTime = Math.min(this.exitDuration, this.exitTime + dt);
+      if (this.exitTime >= this.exitDuration && this.exitCallback) {
+        const cb = this.exitCallback;
+        this.exitCallback = null;
+        cb();
+      }
+      return;
+    }
+
     if (!this.state.completed && this.state.isBoardFull()) {
       if (this.state.isSolved()) {
         this.state.completed = true;
@@ -146,7 +168,15 @@ export default class SudokuScene {
             `用时：${this.state.getTimeSpent()}s`,
             `累计填写：${this.state.fills}次`
           ],
-          onMenu: () => this.host.showMenu(),
+          onMenu: () => {
+            if (this.modal && this.modal.close) {
+              this.modal.close(() => {
+                this.exit(() => this.host.showMenu());
+              });
+            } else {
+              this.exit(() => this.host.showMenu());
+            }
+          },
           onRestart: () => this.reset()
         });
         this.input.add(this.modal);
@@ -163,10 +193,29 @@ export default class SudokuScene {
 
   render(ctx) {
     const theme = this.theme;
-    const reveal = Math.min(1, this.host.sceneAge / 320);
+    
+    // 进场动画：使用 easeOutQuart 缓动 (比原本线性更具优雅的减速滑行质感)
+    const progress = Math.min(1, this.host.sceneAge / 320);
+    const ease = 1 - Math.pow(1 - progress, 4);
+    const reveal = ease;
+
+    // 退场动画：向下掉落淡出
+    let exitAlpha = 1;
+    let exitOffset = 0;
+    if (this.isExiting) {
+      const p = this.exitTime / this.exitDuration;
+      const easeExit = p * p; // easeInQuad
+      exitAlpha = 1 - easeExit;
+      exitOffset = easeExit * 16;
+    }
+
     ctx.clearRect(0, 0, this.host.width, this.host.height);
     ctx.fillStyle = theme.color.bg;
     ctx.fillRect(0, 0, this.host.width, this.host.height);
+
+    ctx.save();
+    ctx.globalAlpha = exitAlpha;
+    ctx.translate(0, exitOffset);
 
     ctx.save();
     ctx.globalAlpha = reveal;
@@ -179,10 +228,13 @@ export default class SudokuScene {
     this.renderHeader(ctx);
     this.renderBoard(ctx);
     this.renderNumberPad(ctx);
+    ctx.restore();
+
+    ctx.restore();
+
     if (this.modal) {
       this.modal.render(ctx, theme);
     }
-    ctx.restore();
   }
 
   renderHeader(ctx) {
@@ -318,6 +370,7 @@ export default class SudokuScene {
 
 
   onTouchStart(point) {
+    if (this.isExiting) return;
     if (this.input.onTouchStart(point.x, point.y)) return;
 
     if (contains({ x: this.boardX, y: this.boardY, w: this.boardSize, h: this.boardSize }, point.x, point.y)) {
@@ -332,10 +385,12 @@ export default class SudokuScene {
   }
 
   onTouchMove(point) {
+    if (this.isExiting) return;
     this.input.onTouchMove(point.x, point.y);
   }
 
   onTouchEnd(point) {
+    if (this.isExiting) return;
     this.input.onTouchEnd(point.x, point.y);
   }
 

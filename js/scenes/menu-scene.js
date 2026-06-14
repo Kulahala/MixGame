@@ -13,6 +13,29 @@ export default class MenuScene {
     this.scores = getScores();
     this.modal = null;
     this.input = new InputDispatcher();
+
+    // Exit Animation States
+    this.isExiting = false;
+    this.exitTime = 0;
+    this.exitDuration = 200; // ms
+    this.exitCallback = null;
+  }
+
+  update(dt = 16) {
+    if (this.isExiting) {
+      this.exitTime = Math.min(this.exitDuration, this.exitTime + dt);
+      if (this.exitTime >= this.exitDuration && this.exitCallback) {
+        const cb = this.exitCallback;
+        this.exitCallback = null;
+        cb();
+      }
+    }
+  }
+
+  exit(callback) {
+    this.isExiting = true;
+    this.exitTime = 0;
+    this.exitCallback = callback;
   }
 
   init() {
@@ -41,7 +64,9 @@ export default class MenuScene {
 
   showGameConfig(game) {
     if (!game.configOptions || game.configOptions.length === 0) {
-      this.host.startGame(game.id);
+      this.exit(() => {
+        this.host.startGame(game.id);
+      });
       return;
     }
     
@@ -51,8 +76,11 @@ export default class MenuScene {
       options: game.configOptions,
       onConfirm: (val) => {
         const options = val || {};
-        this.host.startGame(game.id, options);
-        this.closeModal();
+        this.closeModal(() => {
+          this.exit(() => {
+            this.host.startGame(game.id, options);
+          });
+        });
       },
       onCancel: () => this.closeModal()
     });
@@ -80,11 +108,29 @@ export default class MenuScene {
   render(ctx) {
     const { width, height } = this.host;
     const theme = this.theme;
-    const reveal = Math.min(1, this.host.sceneAge / 360);
+
+    // 进场动画曲线：easeOutQuart (比线性更具阻尼感，快速冲入然后平滑减速)
+    const progress = Math.min(1, this.host.sceneAge / 360);
+    const ease = 1 - Math.pow(1 - progress, 4);
+    const reveal = ease;
+
+    // 退场动画曲线：easeInQuad (加速移出淡出)
+    let exitAlpha = 1;
+    let exitOffset = 0;
+    if (this.isExiting) {
+      const p = this.exitTime / this.exitDuration;
+      const easeExit = p * p;
+      exitAlpha = 1 - easeExit;
+      exitOffset = -easeExit * 16;
+    }
 
     ctx.clearRect(0, 0, width, height);
     ctx.fillStyle = theme.color.bg;
     ctx.fillRect(0, 0, width, height);
+
+    ctx.save();
+    ctx.globalAlpha = exitAlpha;
+    ctx.translate(0, exitOffset);
 
     ctx.save();
     ctx.globalAlpha = reveal;
@@ -119,6 +165,8 @@ export default class MenuScene {
       font: theme.font.body,
     });
 
+    ctx.restore();
+
     if (this.modal) {
       this.modal.render(ctx, theme);
     }
@@ -151,7 +199,13 @@ export default class MenuScene {
     const theme = this.theme;
     const game = GAMES[index];
     const accent = game.themeColor || theme.color.sage;
-    const reveal = Math.min(1, Math.max(0, (this.host.sceneAge - index * 90) / 380));
+    
+    // 瀑布式弹性微弹进入动效：采用 easeOutBack 轻回弹
+    const t = Math.min(1, Math.max(0, (this.host.sceneAge - index * 70) / 340));
+    const c1 = 0.5; // 低调的回弹幅度
+    const ease = t === 1 ? 1 : 1 + (c1 + 1) * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    const reveal = Math.min(1, t * 1.5);
+
     const iconX = card.x + card.w - 68;
     const iconY = card.y + 34;
     const pressDepth = card.isPressed ? 3 : 0;
@@ -159,7 +213,7 @@ export default class MenuScene {
 
     ctx.save();
     ctx.globalAlpha = reveal;
-    ctx.translate(0, (1 - reveal) * 16);
+    ctx.translate(0, (1 - ease) * 16);
     ctx.translate(card.x + card.w / 2, card.y + card.h / 2);
     ctx.scale(scale, scale);
     ctx.translate(-card.x - card.w / 2, -card.y - card.h / 2 + pressDepth);
@@ -229,14 +283,17 @@ export default class MenuScene {
   }
 
   onTouchStart(point) {
+    if (this.isExiting) return;
     this.input.onTouchStart(point.x, point.y);
   }
 
   onTouchMove(point) {
+    if (this.isExiting) return;
     this.input.onTouchMove(point.x, point.y);
   }
 
   onTouchEnd(point) {
+    if (this.isExiting) return;
     this.input.onTouchEnd(point.x, point.y);
   }
 
