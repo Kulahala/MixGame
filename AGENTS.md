@@ -44,6 +44,9 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 - **黄金交互区（自适应中下部布局）**：为了方便右手持机时单手大拇指舒适游玩，游戏的核心操作区域（如棋盘、网格、按钮组）必须使用自适应高度计算将其定位在屏幕中下部（通常为垂直剩余空间居中稍偏下，如 `Y = Math.floor((screenHeight - boardHeight) / 2) + 30`）。
 - **安全边界保护**：在计算高度偏移时，必须限制最小 Y 坐标（通常为 `safeTop + 130` 左右），防止操作区遮挡顶部的返回/重置等功能按钮。
 - **高质感阻尼动效**：界面切换和滑块移动不得使用生硬的瞬闪或单纯线性过渡，必须采用 Easing 缓动曲线（如弹窗进入使用 `easeOutBack` 微弹，退出使用 `easeInQuad`；方块滑动使用 `easeOutCubic` 阻尼减速），动画时长保持在 150ms-220ms 之间，以实现极佳 of 物理仿真质感。
+- **全面屏自适应布局（Responsive Home Indicator Buffer）**：底部手牌与按钮堆必须防切，但又不能由于死板上移导致矮屏幕下中段拥挤。必须使用响应式计算，在大屏（如 `height >= 750`）上将底部堆上提 30px，而在矮屏幕上自动微缩还原，完美契合全面屏 Home 小黑条的安全适配。
+- **视觉宽度对齐边线（Horizontal Edge Alignment）**：下方的独立摸牌堆、回合结束等功能行的总宽必须限宽并居中对齐到与中间棋盘一样的物理宽度（如 310px），形成隐形的左右垂直参考边线，避免由于过度分散显得左右空旷与不协调。
+- **用户友好度编号（Friendly Indexes）**：在面向用户展现的占位符或序号中，必须将底层 0-indexed 数据展示为 1-based（如列号 0-3 映射为 1-4），以提供契合普通用户心智模型的极佳用户体验。
 
 ## Design System & Color Palette (设计系统与配色规范)
 
@@ -85,6 +88,8 @@ If tests are added later, place them in a clearly named `test/` or `__tests__/` 
 ## Commit Message Policy
 
 提交信息应清晰、贴合当前仓库风格。
+
+- **无需每次改动都直接 commit，等改动效果经由用户判断确认后再提交。**
 
 - 如果仓库已有明确提交格式，优先遵循仓库格式。
 - 如果仓库没有格式，默认使用中英双语标题：

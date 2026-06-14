@@ -14,7 +14,7 @@ All game scenes extend `BaseGameScene`, which provides standard enter/exit anima
 
 - `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `game-scene-base.js` provides shared scene behavior (animations, buttons, modals), `input-dispatcher.js` routes touches to interactive objects, and `storage.js` persists local scores.
 - `js/scenes/`: app-level screens. `menu-scene.js` renders the game selection menu and opens configuration modals.
-- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`.
+- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`.
 - `js/ui/`: reusable Canvas UI primitives and overlays.
 - `js/themes/`: shared visual tokens. Current UI uses `elegant.js`.
 - `dev/`: browser-only debug adapter. It should not become a second runtime architecture.
@@ -61,6 +61,8 @@ State classes own gameplay rules, scoring inputs, completion checks, timers, and
 `HuarongdaoState` owns puzzle size, grid generation, shuffle, tile movement, solve detection, timing, steps, and local save.
 
 `MinesweeperState`, `Game2048State`, and `MemoryState` follow the same pattern: own the game rules, completion checks, scoring, and local save.
+
+`WoodKingdomState` owns the battlefield grids (opponent queue, opponent frontline, and player frontline), card configurations, double resources (raindrop and wood), death rewards (acorn and leaves), scale tilt value, level progression, AI actions, turn resolution sequence, and local save.
 
 Scenes should not duplicate core game rules. They should translate screen input into state method calls and render state.
 

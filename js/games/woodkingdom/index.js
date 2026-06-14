@@ -17,42 +17,64 @@ export default class WoodKingdomScene extends BaseGameScene {
     // Top buttons (back + reset)
     this.createTopButtons();
 
-    // Setup grid parameters - 3 rows & comfortable large sizes
-    this.slotWidth = 70;
-    this.slotHeight = 94;
-    this.gap = 10;
-    this.gridRowGap = 16;
+    // Responsive Board & Hand Parameters depending on screen height (Frontend-Design responsive zones)
+    if (height >= 750) {
+      // Tall screen (comfortable large layout with bottom safe zone home-indicator buffer)
+      this.slotWidth = 70;
+      this.slotHeight = 94;
+      this.gap = 10;
+      this.gridRowGap = 16;
+
+      this.handCardWidth = 66;
+      this.handCardHeight = 90;
+      this.handY = height - 165; // Shifted upwards by 30px
+      this.handGap = 10;
+
+      this.drawY = height - 235; // Shifted upwards by 30px
+      this.pileWidth = 66;
+      this.pileHeight = 44;
+    } else {
+      // Short screen (compact layout to prevent vertical squeezed overlaps on older flat screens)
+      this.slotWidth = 60;
+      this.slotHeight = 82;
+      this.gap = 8;
+      this.gridRowGap = 12;
+
+      this.handCardWidth = 58;
+      this.handCardHeight = 78;
+      this.handY = height - 120; // Shifted upwards by 15px
+      this.handGap = 8;
+
+      this.drawY = height - 180; // Shifted upwards by 15px
+      this.pileWidth = 58;
+      this.pileHeight = 40;
+    }
 
     const gridW = 4 * this.slotWidth + 3 * this.gap;
     const gridH = 3 * this.slotHeight + 2 * this.gridRowGap; // 3 Rows
 
     this.gridX = Math.floor((width - gridW) / 2);
 
-    // Ergonomic Layout Center-lower, taking advantage of height
-    this.gridY = Math.floor((height - gridH) / 2) + 20;
-    const safeLimit = this.host.safeTop + 140; // Adapted to prevent overlap with notch/scale
+    // Ergonomic Layout Center-lower, shifted upwards slightly to remain centered and compact
+    if (height >= 750) {
+      this.gridY = Math.floor((height - gridH) / 2) - 35;
+    } else {
+      this.gridY = Math.floor((height - gridH) / 2) - 15;
+    }
+    const safeLimit = this.host.safeTop + 120; // Allow it to go higher safely
     if (this.gridY < safeLimit) {
       this.gridY = safeLimit;
     }
 
-    // Layout for hand cards (larger size)
-    this.handCardWidth = 66;
-    this.handCardHeight = 90;
-    this.handY = height - 115;
-
-    // Draw piles coordinates (larger size)
-    this.drawY = height - 185;
-    this.pileWidth = 66;
-    this.pileHeight = 44;
-
-    // Arrange draw piles with balanced margins dynamically
-    const drawGap = Math.floor((width - 4 * this.pileWidth - 32) / 3);
-    const startDrawX = 16;
+    // Arrange draw piles with compact aligned margins (limit to board width for aesthetic layout)
+    const boardW = 4 * this.slotWidth + 3 * this.gap;
+    const drawGap = Math.floor((boardW - 4 * this.pileWidth) / 3);
+    const startDrawX = Math.floor((width - boardW) / 2);
 
     this.squirrelPileRect = { x: startDrawX, y: this.drawY, w: this.pileWidth, h: this.pileHeight };
     this.sproutPileRect = { x: startDrawX + this.pileWidth + drawGap, y: this.drawY, w: this.pileWidth, h: this.pileHeight };
     this.deckPileRect = { x: startDrawX + 2 * (this.pileWidth + drawGap), y: this.drawY, w: this.pileWidth, h: this.pileHeight };
-    this.endTurnRect = { x: width - 16 - (this.pileWidth + 16), y: this.drawY, w: this.pileWidth + 16, h: this.pileHeight };
+    this.endTurnRect = { x: startDrawX + 3 * (this.pileWidth + drawGap), y: this.drawY, w: this.pileWidth, h: this.pileHeight };
   }
 
   reset() {
@@ -251,8 +273,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     } else if (anim.type === 'resource_gain') {
       this.visualResources[anim.resource] += anim.amount;
       const resIdx = anim.resource === 'raindrop' ? 0 : anim.resource === 'wood' ? 1 : anim.resource === 'acorn' ? 2 : 3;
-      const resX = this.host.width / 2 - 110 + resIdx * 65;
-      this.spawnFloatingText(`+${anim.amount}`, resX, this.gridY - 20, theme.color.sage);
+      const resX = this.host.width / 2 - 120 + resIdx * 75;
+      this.spawnFloatingText(`+${anim.amount}`, resX, this.drawY - 20, theme.color.sage);
     }
   }
 
@@ -578,8 +600,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     // Draw mechanical scale
     this.drawMechanicalScale(ctx);
 
-    // Draw resources bar (just above grid Row 0)
-    const resY = this.gridY - 20;
+    // Draw resources bar (just above draw piles)
+    const resY = this.drawY - 20;
     const rx1 = width / 2 - 120;
     const rx2 = width / 2 - 45;
     const rx3 = width / 2 + 30;
@@ -694,7 +716,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       const card = this.visualPlayerSlots[i];
 
       if (!card) {
-        this.drawEmptySlot(ctx, slotX, slotY, this.slotWidth, this.slotHeight, i, true, `${i}`);
+        this.drawEmptySlot(ctx, slotX, slotY, this.slotWidth, this.slotHeight, i, true, `${i + 1}`);
       } else {
         ctx.save();
         if (this.currentAnim && this.currentAnim.type === 'combat_attack' && this.currentAnim.attackerSide === 'player' && this.currentAnim.fromSlot === i) {
@@ -819,7 +841,8 @@ export default class WoodKingdomScene extends BaseGameScene {
       const hand = this.state.hand;
       const cardW = this.handCardWidth;
       const cardH = this.handCardHeight;
-      const gap = 10;
+      const boardW = 4 * this.slotWidth + 3 * this.gap;
+      const gap = hand.length <= 1 ? 0 : Math.max(8, Math.min(18, Math.floor((boardW - hand.length * cardW) / (hand.length - 1))));
       const totalW = hand.length * cardW + (hand.length - 1) * gap;
       const startX = Math.floor((width - totalW) / 2);
 
@@ -836,7 +859,6 @@ export default class WoodKingdomScene extends BaseGameScene {
           this.drawHandCard(ctx, hand[i], cx, cy, cardW, cardH, false);
         }
       }
-    }
     }
 
     // Bottom Quote
@@ -1073,7 +1095,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     const hand = this.state.hand;
     const cardW = this.handCardWidth;
     const cardH = this.handCardHeight;
-    const gap = 10;
+    const boardW = 4 * this.slotWidth + 3 * this.gap;
+    const gap = hand.length <= 1 ? 0 : Math.max(8, Math.min(18, Math.floor((boardW - hand.length * cardW) / (hand.length - 1))));
     const totalW = hand.length * cardW + (hand.length - 1) * gap;
     const startX = Math.floor((this.host.width - totalW) / 2);
 
