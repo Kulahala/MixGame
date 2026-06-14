@@ -46,7 +46,7 @@ Interactive UI objects should follow the same lifecycle:
 
 ## Canvas and Rendering
 
-`js/render.js` creates the primary canvas, sets its physical size to `windowWidth × windowHeight × pixelRatio`, and exports `SCREEN_WIDTH`, `SCREEN_HEIGHT` (logical pixels) and `PIXEL_RATIO`. `js/main.js` applies `ctx.scale(PIXEL_RATIO, PIXEL_RATIO)` so all downstream code works in logical pixels.
+`js/render.js` creates the primary canvas, sets its physical size to `windowWidth × windowHeight × pixelRatio`, and exports `SCREEN_WIDTH`, `SCREEN_HEIGHT` (logical pixels), `PIXEL_RATIO`, and `SAFE_TOP` (safe area top offset from `safeArea.top` or `statusBarHeight`). `js/main.js` applies `ctx.scale(PIXEL_RATIO, PIXEL_RATIO)` so all downstream code works in logical pixels. All scenes use `host.safeTop` to offset titles, buttons, and board positions below the status bar / notch area.
 
 All game scenes render through `BaseGameScene.render(ctx)`, which handles background fill, enter/exit animation wrapping, top buttons, and modal overlay. Subclasses implement `renderGame(ctx)` for game-specific drawing.
 

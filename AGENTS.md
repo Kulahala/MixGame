@@ -44,7 +44,7 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 No automated test framework is configured. Validate changes in WeChat Developer Tools or the browser debug shell before submission. At minimum, verify:
 
 - The menu renders and each game card opens the correct configuration or game.
-- Sudoku supports selecting cells, entering numbers, immediate mistake marking, undo, erase, note mode, restart, result modal, and return to menu.
+- Sudoku supports selecting cells, entering numbers, immediate mistake marking, undo, note mode, restart, result modal, and return to menu.
 - Digital Huarongdao supports size selection, click or swipe movement, restart, result modal, and return to menu.
 - Minesweeper supports difficulty selection, click to reveal, long-press to flag, win/lose detection, and return to menu.
 - 2048 supports target selection, swipe to merge tiles, win detection, and return to menu.
