@@ -226,9 +226,8 @@ export default class MemoryScene extends BaseGameScene {
     }
 
     // ── Bottom hint ─────────────────────────────────
-    const gridH = rows * size + (rows - 1) * gap;
-    drawText(ctx, this.bottomQuote, width / 2, this.gridY + gridH + 28, {
-      size: 13,
+    drawText(ctx, this.bottomQuote, width / 2, this.host.height - 42, {
+      size: 12,
       color: theme.color.faint,
       align: 'center',
       baseline: 'middle',

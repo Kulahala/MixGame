@@ -200,8 +200,8 @@ export default class SlitherlinkScene extends BaseGameScene {
     }
 
     // ── Render Bottom Hint/Quote ─────────────────────
-    drawText(ctx, this.bottomQuote, this.host.width / 2, y + size + 36, {
-      size: 13,
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.host.height - 42, {
+      size: 12,
       color: theme.color.faint,
       align: 'center',
       baseline: 'middle',

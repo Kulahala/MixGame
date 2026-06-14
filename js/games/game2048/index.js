@@ -157,8 +157,8 @@ export default class Game2048Scene extends BaseGameScene {
     }
 
     // ── Bottom hint ─────────────────────────────────
-    drawText(ctx, this.bottomQuote, this.host.width / 2, this.gridY + this.gridSize + 28, {
-      size: 13,
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.host.height - 42, {
+      size: 12,
       color: theme.color.faint,
       align: 'center',
       baseline: 'middle',

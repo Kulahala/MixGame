@@ -258,7 +258,7 @@ export default class SudokuScene extends BaseGameScene {
       }
     }
 
-    drawText(ctx, this.bottomQuote, this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + (this.host.height < 600 ? 18 : 28), {
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.host.height - 42, {
       size: 12,
       color: theme.color.faint,
       align: 'center',
