@@ -88,8 +88,12 @@ Keep visual changes centralized where possible. Avoid hardcoding game-specific m
 
 When adding or changing a game:
 
-1. Add or update `js/games/<game-id>/state.js` for rules and persistence.
-2. Add or update `js/games/<game-id>/index.js` for rendering and input glue.
+1. Add or update `js/games/<game-id>/state.js` for rules, performance-bounded loops, and persistence.
+2. Add or update `js/games/<game-id>/index.js` for rendering, touch input glue, and drawing quotes at the unified screen bottom (`this.host.height - 42`).
 3. Register the game in `js/games/registry.js`.
-4. Reuse `InputDispatcher`, `Button`, `ConfigModal`, and `ResultModal` instead of custom one-off controls.
-5. Check whether `README.md`, `ARCHITECTURE.md`, or `AGENTS.md` need updates before committing.
+4. Register the default score template structure in `DEFAULT_SCORES` within `js/core/storage.js`.
+5. Add game-specific tips (prefixed with `"小tips: "`) in `GAME_TIPS` within `js/ui/quotes.js`.
+6. Ensure the gameplay area respects mobile ergonomics (positioned in the middle-lower golden interactive area) and inherits from `BaseGameScene` for unified transition animations and input interception.
+7. Reuse `InputDispatcher`, `Button`, `ConfigModal`, and `ResultModal` instead of custom one-off controls.
+8. Check whether `README.md`, `ARCHITECTURE.md`, or `AGENTS.md` need updates before committing.
+
