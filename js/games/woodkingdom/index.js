@@ -17,33 +17,33 @@ export default class WoodKingdomScene extends BaseGameScene {
     // Top buttons (back + reset)
     this.createTopButtons();
 
-    // Setup grid parameters - 3 rows & compact sizes
-    this.slotWidth = 58;
-    this.slotHeight = 78;
-    this.gap = 8;
-    this.gridRowGap = 12;
+    // Setup grid parameters - 3 rows & comfortable large sizes
+    this.slotWidth = 70;
+    this.slotHeight = 94;
+    this.gap = 10;
+    this.gridRowGap = 16;
 
     const gridW = 4 * this.slotWidth + 3 * this.gap;
     const gridH = 3 * this.slotHeight + 2 * this.gridRowGap; // 3 Rows
 
     this.gridX = Math.floor((width - gridW) / 2);
 
-    // Ergonomic Layout Center-lower
-    this.gridY = Math.floor((height - gridH) / 2) + 35;
-    const safeLimit = this.host.safeTop + 125; // Slightly adapted to prevent overlap with notch
+    // Ergonomic Layout Center-lower, taking advantage of height
+    this.gridY = Math.floor((height - gridH) / 2) + 20;
+    const safeLimit = this.host.safeTop + 140; // Adapted to prevent overlap with notch/scale
     if (this.gridY < safeLimit) {
       this.gridY = safeLimit;
     }
 
-    // Layout for hand cards
-    this.handCardWidth = 56;
-    this.handCardHeight = 76;
-    this.handY = height - 100;
+    // Layout for hand cards (larger size)
+    this.handCardWidth = 66;
+    this.handCardHeight = 90;
+    this.handY = height - 115;
 
-    // Draw piles coordinates
-    this.drawY = height - 165;
-    this.pileWidth = 58;
-    this.pileHeight = 40;
+    // Draw piles coordinates (larger size)
+    this.drawY = height - 185;
+    this.pileWidth = 66;
+    this.pileHeight = 44;
 
     // Arrange draw piles with balanced margins dynamically
     const drawGap = Math.floor((width - 4 * this.pileWidth - 32) / 3);
@@ -52,7 +52,7 @@ export default class WoodKingdomScene extends BaseGameScene {
     this.squirrelPileRect = { x: startDrawX, y: this.drawY, w: this.pileWidth, h: this.pileHeight };
     this.sproutPileRect = { x: startDrawX + this.pileWidth + drawGap, y: this.drawY, w: this.pileWidth, h: this.pileHeight };
     this.deckPileRect = { x: startDrawX + 2 * (this.pileWidth + drawGap), y: this.drawY, w: this.pileWidth, h: this.pileHeight };
-    this.endTurnRect = { x: width - 16 - (this.pileWidth + 14), y: this.drawY, w: this.pileWidth + 14, h: this.pileHeight };
+    this.endTurnRect = { x: width - 16 - (this.pileWidth + 16), y: this.drawY, w: this.pileWidth + 16, h: this.pileHeight };
   }
 
   reset() {
@@ -290,9 +290,9 @@ export default class WoodKingdomScene extends BaseGameScene {
   drawMechanicalScale(ctx) {
     const theme = this.theme;
     const centerX = this.host.width / 2;
-    const pivotY = this.host.safeTop + 85;
-    const beamHalfLength = 45;
-    const hangingLength = 18;
+    const pivotY = this.host.safeTop + 90;
+    const beamHalfLength = 55;
+    const hangingLength = 22;
 
     const angle = this.currentTilt * 0.05; // rad
     const cosA = Math.cos(angle);
@@ -302,17 +302,17 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     // 1. Draw Stand/Base
     ctx.strokeStyle = theme.color.muted;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.moveTo(centerX, pivotY);
-    ctx.lineTo(centerX, pivotY + 25);
-    ctx.moveTo(centerX - 15, pivotY + 25);
-    ctx.lineTo(centerX + 15, pivotY + 25);
+    ctx.lineTo(centerX, pivotY + 30);
+    ctx.moveTo(centerX - 20, pivotY + 30);
+    ctx.lineTo(centerX + 20, pivotY + 30);
     ctx.stroke();
 
     ctx.fillStyle = theme.color.accent;
     ctx.beginPath();
-    ctx.arc(centerX, pivotY, 4, 0, Math.PI * 2);
+    ctx.arc(centerX, pivotY, 5, 0, Math.PI * 2);
     ctx.fill();
 
     // 2. Draw Beam
@@ -322,7 +322,7 @@ export default class WoodKingdomScene extends BaseGameScene {
     const ry = pivotY + beamHalfLength * sinA;
 
     ctx.strokeStyle = theme.color.ink;
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(lx, ly);
     ctx.lineTo(rx, ry);
@@ -332,25 +332,25 @@ export default class WoodKingdomScene extends BaseGameScene {
     const opponentPanX = lx;
     const opponentPanY = ly + hangingLength;
     ctx.strokeStyle = theme.color.muted;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(lx, ly);
-    ctx.lineTo(opponentPanX - 10, opponentPanY);
+    ctx.lineTo(opponentPanX - 12, opponentPanY);
     ctx.moveTo(lx, ly);
-    ctx.lineTo(opponentPanX + 10, opponentPanY);
-    ctx.moveTo(opponentPanX - 14, opponentPanY);
-    ctx.lineTo(opponentPanX + 14, opponentPanY);
+    ctx.lineTo(opponentPanX + 12, opponentPanY);
+    ctx.moveTo(opponentPanX - 16, opponentPanY);
+    ctx.lineTo(opponentPanX + 16, opponentPanY);
     ctx.stroke();
 
     const playerPanX = rx;
     const playerPanY = ry + hangingLength;
     ctx.beginPath();
     ctx.moveTo(rx, ry);
-    ctx.lineTo(playerPanX - 10, playerPanY);
+    ctx.lineTo(playerPanX - 12, playerPanY);
     ctx.moveTo(rx, ry);
-    ctx.lineTo(playerPanX + 10, playerPanY);
-    ctx.moveTo(playerPanX - 14, playerPanY);
-    ctx.lineTo(playerPanX + 14, playerPanY);
+    ctx.lineTo(playerPanX + 12, playerPanY);
+    ctx.moveTo(playerPanX - 16, playerPanY);
+    ctx.lineTo(playerPanX + 16, playerPanY);
     ctx.stroke();
 
     // 4. Draw Weights
@@ -361,9 +361,9 @@ export default class WoodKingdomScene extends BaseGameScene {
 
       ctx.fillStyle = theme.color.gold;
       for (let i = 0; i < weightsCount; i++) {
-        const bx = heavierPanX - 5 + (i % 3) * 4;
-        const by = heavierPanY - 4 - Math.floor(i / 3) * 4;
-        ctx.fillRect(bx, by, 3, 3);
+        const bx = heavierPanX - 6 + (i % 3) * 5;
+        const by = heavierPanY - 5 - Math.floor(i / 3) * 5;
+        ctx.fillRect(bx, by, 4, 4);
       }
     }
 
@@ -371,8 +371,8 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     // Draw scale text indicator
     const tiltText = this.visualScaleTilt > 0 ? `+${this.visualScaleTilt}` : `${this.visualScaleTilt}`;
-    drawText(ctx, `天平: ${tiltText}`, centerX, pivotY - 16, {
-      size: 11,
+    drawText(ctx, `天平: ${tiltText}`, centerX, pivotY - 20, {
+      size: 12,
       color: this.visualScaleTilt > 0 ? theme.color.sage : this.visualScaleTilt < 0 ? theme.color.danger : theme.color.ink,
       align: 'center',
       baseline: 'middle',
@@ -397,7 +397,7 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     if (label) {
       drawText(ctx, label, x + w / 2, y + h / 2, {
-        size: 12,
+        size: 14,
         color: theme.color.line,
         align: 'center',
         baseline: 'middle',
@@ -434,8 +434,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     strokeRoundRect(ctx, x, y, w, h, radius, borderColor, borderWidth);
 
     // Name
-    drawText(ctx, card.name, x + w / 2, y + 14, {
-      size: 11,
+    drawText(ctx, card.name, x + w / 2, y + 18, {
+      size: 12,
       color: theme.color.ink,
       align: 'center',
       baseline: 'middle',
@@ -453,8 +453,8 @@ export default class WoodKingdomScene extends BaseGameScene {
         return s;
       }).join(' ');
 
-      drawText(ctx, sigilNames, x + w / 2, y + h / 2 - 2, {
-        size: 9,
+      drawText(ctx, sigilNames, x + w / 2, y + h / 2 + 2, {
+        size: 10,
         color: theme.color.muted,
         align: 'center',
         baseline: 'middle',
@@ -463,8 +463,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     }
 
     // Stats
-    drawText(ctx, `${card.attack}`, x + 8, y + h - 10, {
-      size: 11,
+    drawText(ctx, `${card.attack}`, x + 10, y + h - 14, {
+      size: 12,
       color: theme.color.accent,
       align: 'left',
       baseline: 'middle',
@@ -472,8 +472,8 @@ export default class WoodKingdomScene extends BaseGameScene {
       weight: 'bold'
     });
 
-    drawText(ctx, `${card.hp}/${card.maxHp}`, x + w - 8, y + h - 10, {
-      size: 11,
+    drawText(ctx, `${card.hp}/${card.maxHp}`, x + w - 10, y + h - 14, {
+      size: 12,
       color: theme.color.sage,
       align: 'right',
       baseline: 'middle',
@@ -495,8 +495,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     strokeRoundRect(ctx, x, y, w, h, radius, borderColor, borderWidth);
 
     // Name
-    drawText(ctx, card.name, x + w / 2, y + 16, {
-      size: 11,
+    drawText(ctx, card.name, x + w / 2, y + 18, {
+      size: 12,
       color: theme.color.ink,
       align: 'center',
       baseline: 'middle',
@@ -513,8 +513,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     if (cost.leaves > 0) costStr += `🍃${cost.leaves}`;
     if (!costStr) costStr = '免费';
 
-    drawText(ctx, costStr, x + w / 2, y + 36, {
-      size: 9,
+    drawText(ctx, costStr, x + w / 2, y + 38, {
+      size: 10,
       color: theme.color.muted,
       align: 'center',
       baseline: 'middle',
@@ -531,8 +531,8 @@ export default class WoodKingdomScene extends BaseGameScene {
         return s;
       }).join(' ');
 
-      drawText(ctx, sigilsText, x + w / 2, y + h / 2 + 10, {
-        size: 9,
+      drawText(ctx, sigilsText, x + w / 2, y + h / 2 + 12, {
+        size: 10,
         color: theme.color.blue,
         align: 'center',
         baseline: 'middle',
@@ -541,8 +541,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     }
 
     // Stats
-    drawText(ctx, `${card.attack}`, x + 8, y + h - 10, {
-      size: 11,
+    drawText(ctx, `${card.attack}`, x + 10, y + h - 14, {
+      size: 12,
       color: theme.color.accent,
       align: 'left',
       baseline: 'middle',
@@ -550,8 +550,8 @@ export default class WoodKingdomScene extends BaseGameScene {
       weight: 'bold'
     });
 
-    drawText(ctx, `${card.hp}`, x + w - 8, y + h - 10, {
-      size: 11,
+    drawText(ctx, `${card.hp}`, x + w - 10, y + h - 14, {
+      size: 12,
       color: theme.color.sage,
       align: 'right',
       baseline: 'middle',
@@ -566,8 +566,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     const height = this.host.height;
 
     // Compact Title & Level info
-    drawText(ctx, `森之王国 · 第 ${this.state.level}/3 关 · 回合 ${this.state.turn}`, width / 2, this.host.safeTop + 40, {
-      size: 14,
+    drawText(ctx, `森之王国 · 第 ${this.state.level}/3 关 · 回合 ${this.state.turn}`, width / 2, this.host.safeTop + 45, {
+      size: 15,
       color: theme.color.ink,
       align: 'center',
       baseline: 'middle',
@@ -579,42 +579,42 @@ export default class WoodKingdomScene extends BaseGameScene {
     this.drawMechanicalScale(ctx);
 
     // Draw resources bar (just above grid Row 0)
-    const resY = this.gridY - 16;
-    const rx1 = width / 2 - 105;
-    const rx2 = width / 2 - 40;
-    const rx3 = width / 2 + 25;
-    const rx4 = width / 2 + 90;
+    const resY = this.gridY - 20;
+    const rx1 = width / 2 - 120;
+    const rx2 = width / 2 - 45;
+    const rx3 = width / 2 + 30;
+    const rx4 = width / 2 + 105;
 
     ctx.fillStyle = theme.color.blue;
     ctx.beginPath();
-    ctx.arc(rx1, resY, 4, 0, Math.PI * 2);
+    ctx.arc(rx1, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `雨露:${this.visualResources.raindrop}`, rx1 + 8, resY, {
-      size: 10, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
+    drawText(ctx, `雨露:${this.visualResources.raindrop}`, rx1 + 10, resY, {
+      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
     ctx.fillStyle = theme.color.accent;
     ctx.beginPath();
-    ctx.arc(rx2, resY, 4, 0, Math.PI * 2);
+    ctx.arc(rx2, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `木材:${this.visualResources.wood}`, rx2 + 8, resY, {
-      size: 10, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
+    drawText(ctx, `木材:${this.visualResources.wood}`, rx2 + 10, resY, {
+      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
     ctx.fillStyle = theme.color.gold;
     ctx.beginPath();
-    ctx.arc(rx3, resY, 4, 0, Math.PI * 2);
+    ctx.arc(rx3, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `橡果:${this.visualResources.acorn}`, rx3 + 8, resY, {
-      size: 10, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
+    drawText(ctx, `橡果:${this.visualResources.acorn}`, rx3 + 10, resY, {
+      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
     ctx.fillStyle = theme.color.sage;
     ctx.beginPath();
-    ctx.arc(rx4, resY, 4, 0, Math.PI * 2);
+    ctx.arc(rx4, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `树叶:${this.visualResources.leaves}`, rx4 + 8, resY, {
-      size: 10, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
+    drawText(ctx, `树叶:${this.visualResources.leaves}`, rx4 + 10, resY, {
+      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
     // Draw 3x4 card grid
@@ -658,17 +658,17 @@ export default class WoodKingdomScene extends BaseGameScene {
           const t = Math.sin(p * Math.PI);
           let tx = 0, ty = 0;
           if (this.currentAnim.direct) {
-            ty = t * 25; // lunge down towards player side
+            ty = t * 30; // lunge down towards player side
           } else {
             const targetX = this.gridX + this.currentAnim.targetSlot * (this.slotWidth + this.gap);
             tx = t * (targetX - slotX);
             ty = t * (this.slotHeight + this.gridRowGap); // hit player frontline
           }
           if (card.sigils.includes('airborne')) {
-            ty -= 10 * Math.sin(p * Math.PI);
+            ty -= 12 * Math.sin(p * Math.PI);
           }
           if (card.sigils.includes('bifurcated')) {
-            tx += Math.sin(p * Math.PI * 5) * 5;
+            tx += Math.sin(p * Math.PI * 5) * 6;
           }
           ctx.translate(tx, ty);
         }
@@ -702,17 +702,17 @@ export default class WoodKingdomScene extends BaseGameScene {
           const t = Math.sin(p * Math.PI);
           let tx = 0, ty = 0;
           if (this.currentAnim.direct) {
-            ty = -t * 25; // lunge up towards opponent side
+            ty = -t * 30; // lunge up towards opponent side
           } else {
             const targetX = this.gridX + this.currentAnim.targetSlot * (this.slotWidth + this.gap);
             tx = t * (targetX - slotX);
             ty = -t * (this.slotHeight + this.gridRowGap); // hit opponent frontline (Row 1)
           }
           if (card.sigils.includes('airborne')) {
-            ty -= 10 * Math.sin(p * Math.PI);
+            ty -= 12 * Math.sin(p * Math.PI);
           }
           if (card.sigils.includes('bifurcated')) {
-            tx += Math.sin(p * Math.PI * 5) * 5;
+            tx += Math.sin(p * Math.PI * 5) * 6;
           }
           ctx.translate(tx, ty);
         }
@@ -721,12 +721,12 @@ export default class WoodKingdomScene extends BaseGameScene {
 
         // Sacrifice button
         if (!this.isResolvingTurn && !this.showRewardModal && !this.modal) {
-          const btnSize = 16;
-          const bx = slotX + this.slotWidth - btnSize - 2;
-          const by = slotY + 2;
+          const btnSize = 18;
+          const bx = slotX + this.slotWidth - btnSize - 3;
+          const by = slotY + 3;
           fillRoundRect(ctx, bx, by, btnSize, btnSize, 4, theme.color.danger);
           drawText(ctx, '祭', bx + btnSize / 2, by + btnSize / 2 + 1, {
-            size: 9,
+            size: 10,
             color: theme.color.paper,
             align: 'center',
             baseline: 'middle',
@@ -765,7 +765,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       ctx.save();
       ctx.globalAlpha = ft.life / ft.maxLife;
       drawText(ctx, ft.text, ft.x, ft.y, {
-        size: 12,
+        size: 13,
         color: ft.color,
         align: 'center',
         baseline: 'middle',
@@ -780,31 +780,31 @@ export default class WoodKingdomScene extends BaseGameScene {
       // Squirrel Pile
       fillRoundRect(ctx, this.squirrelPileRect.x, this.squirrelPileRect.y, this.squirrelPileRect.w, this.squirrelPileRect.h, theme.radius.sm, theme.color.paper);
       strokeRoundRect(ctx, this.squirrelPileRect.x, this.squirrelPileRect.y, this.squirrelPileRect.w, this.squirrelPileRect.h, theme.radius.sm, theme.color.line);
-      drawText(ctx, '松鼠堆', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y + 13, {
+      drawText(ctx, '松鼠堆', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y + 14, {
         size: 10, color: theme.color.ink, align: 'center', baseline: 'middle', font: theme.font.title, weight: 'bold'
       });
-      drawText(ctx, '∞', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y + 27, {
+      drawText(ctx, '∞', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y + 29, {
         size: 11, color: theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.body
       });
 
       // Sprout Pile
       fillRoundRect(ctx, this.sproutPileRect.x, this.sproutPileRect.y, this.sproutPileRect.w, this.sproutPileRect.h, theme.radius.sm, theme.color.paper);
       strokeRoundRect(ctx, this.sproutPileRect.x, this.sproutPileRect.y, this.sproutPileRect.w, this.sproutPileRect.h, theme.radius.sm, theme.color.line);
-      drawText(ctx, '嫩芽堆', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y + 13, {
+      drawText(ctx, '嫩芽堆', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y + 14, {
         size: 10, color: theme.color.ink, align: 'center', baseline: 'middle', font: theme.font.title, weight: 'bold'
       });
-      drawText(ctx, '∞', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y + 27, {
+      drawText(ctx, '∞', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y + 29, {
         size: 11, color: theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.body
       });
 
       // Deck Pile
       fillRoundRect(ctx, this.deckPileRect.x, this.deckPileRect.y, this.deckPileRect.w, this.deckPileRect.h, theme.radius.sm, theme.color.paper);
       strokeRoundRect(ctx, this.deckPileRect.x, this.deckPileRect.y, this.deckPileRect.w, this.deckPileRect.h, theme.radius.sm, theme.color.line);
-      drawText(ctx, '牌组堆', this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y + 13, {
+      drawText(ctx, '牌组堆', this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y + 14, {
         size: 10, color: theme.color.ink, align: 'center', baseline: 'middle', font: theme.font.title, weight: 'bold'
       });
-      drawText(ctx, `${this.state.deck.length}张`, this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y + 27, {
-        size: 9, color: theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.body
+      drawText(ctx, `${this.state.deck.length}张`, this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y + 29, {
+        size: 10, color: theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.body
       });
 
       // End Turn Button
@@ -812,14 +812,14 @@ export default class WoodKingdomScene extends BaseGameScene {
       fillRoundRect(ctx, this.endTurnRect.x, this.endTurnRect.y, this.endTurnRect.w, this.endTurnRect.h, theme.radius.sm, isDActive ? theme.color.accent : theme.color.paperDeep);
       strokeRoundRect(ctx, this.endTurnRect.x, this.endTurnRect.y, this.endTurnRect.w, this.endTurnRect.h, theme.radius.sm, isDActive ? theme.color.accent : theme.color.line);
       drawText(ctx, '回合结束', this.endTurnRect.x + this.endTurnRect.w / 2, this.endTurnRect.y + this.endTurnRect.h / 2, {
-        size: 11, color: isDActive ? theme.color.paper : theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.title, weight: 'bold'
+        size: 12, color: isDActive ? theme.color.paper : theme.color.muted, align: 'center', baseline: 'middle', font: theme.font.title, weight: 'bold'
       });
 
       // Hand cards
       const hand = this.state.hand;
       const cardW = this.handCardWidth;
       const cardH = this.handCardHeight;
-      const gap = 8;
+      const gap = 10;
       const totalW = hand.length * cardW + (hand.length - 1) * gap;
       const startX = Math.floor((width - totalW) / 2);
 
@@ -836,6 +836,7 @@ export default class WoodKingdomScene extends BaseGameScene {
           this.drawHandCard(ctx, hand[i], cx, cy, cardW, cardH, false);
         }
       }
+    }
     }
 
     // Bottom Quote
@@ -948,9 +949,9 @@ export default class WoodKingdomScene extends BaseGameScene {
       if (card) {
         const slotX = this.gridX + i * (this.slotWidth + this.gap);
         const slotY = this.gridY + 2 * (this.slotHeight + this.gridRowGap);
-        const btnSize = 16;
-        const bx = slotX + this.slotWidth - btnSize - 2;
-        const by = slotY + 2;
+        const btnSize = 18;
+        const bx = slotX + this.slotWidth - btnSize - 3;
+        const by = slotY + 3;
 
         if (point.x >= bx && point.x <= bx + btnSize && point.y >= by && point.y <= by + btnSize) {
           try {
@@ -1072,7 +1073,7 @@ export default class WoodKingdomScene extends BaseGameScene {
     const hand = this.state.hand;
     const cardW = this.handCardWidth;
     const cardH = this.handCardHeight;
-    const gap = 8;
+    const gap = 10;
     const totalW = hand.length * cardW + (hand.length - 1) * gap;
     const startX = Math.floor((this.host.width - totalW) / 2);
 
