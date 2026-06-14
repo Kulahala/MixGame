@@ -76,7 +76,7 @@ Result screens may display intuitive per-game metrics such as time, steps, mista
 
 Canvas UI should use shared helpers from `js/ui/canvas.js` and shared theme values from `js/themes/elegant.js`. Game scenes should extend `BaseGameScene` and implement `reset()` and `renderGame(ctx)` rather than duplicating animation, button, and modal logic.
 
-Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`.
+Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`. `quotes.js` acts as a static collection of zen-styled quotes and game-specific tips, rendered randomly at the bottom of the menu and game scenes.
 
 Keep visual changes centralized where possible. Avoid hardcoding game-specific menu branches when the registry can carry the metadata.
 
