@@ -39,6 +39,12 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 
 `.eslintrc.js` currently defines no strict rules. Treat existing formatting as the source of truth.
 
+## Mobile Ergonomics & UI Guidelines (移动端人体工学与UI交互设计规范)
+
+- **黄金交互区（自适应中下部布局）**：为了方便右手持机时单手大拇指舒适游玩，游戏的核心操作区域（如棋盘、网格、按钮组）必须使用自适应高度计算将其定位在屏幕中下部（通常为垂直剩余空间居中稍偏下，如 `Y = Math.floor((screenHeight - boardHeight) / 2) + 30`）。
+- **安全边界保护**：在计算高度偏移时，必须限制最小 Y 坐标（通常为 `safeTop + 130` 左右），防止操作区遮挡顶部的返回/重置等功能按钮。
+- **高质感阻尼动效**：界面切换和滑块移动不得使用生硬的瞬闪或单纯线性过渡，必须采用 Easing 缓动曲线（如弹窗进入使用 `easeOutBack` 微弹，退出使用 `easeInQuad`；方块滑动使用 `easeOutCubic` 阻尼减速），动画时长保持在 150ms-220ms 之间，以实现极佳的物理仿真质感。
+
 ## Testing Guidelines
 
 No automated test framework is configured. Validate changes in WeChat Developer Tools or the browser debug shell before submission. At minimum, verify:
