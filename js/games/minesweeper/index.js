@@ -4,6 +4,9 @@ import Button from '../../ui/button.js';
 import MinesweeperState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 
+const LONG_PRESS_MS = 400;
+const CANCEL_DRAG_PX = 12;
+
 // 数字颜色映射
 const NUMBER_COLORS = {
   1: '#52677a',  // 蓝
@@ -240,12 +243,12 @@ export default class MinesweeperScene extends BaseGameScene {
       this._touchCol = col;
       this.longPressTriggered = false;
 
-      // 启动长按定时器（400ms），长按固定插旗/取消旗，不受当前模式影响
+      // 启动长按定时器，长按固定插旗/取消旗，不受当前模式影响
       this.longPressTimer = setTimeout(() => {
         this.longPressTriggered = true;
         this.longPressTimer = null;
         state.toggleFlag(row, col);
-      }, 400);
+      }, LONG_PRESS_MS);
     }
   }
 
@@ -253,13 +256,15 @@ export default class MinesweeperScene extends BaseGameScene {
     if (this.isExiting) return;
     this.input.onTouchMove(point.x, point.y);
 
-    // 手指移动超过 12px 取消长按定时器
+    // 手指移动超过阈值取消长按，同时取消本次触摸的短按
     if (this.longPressTimer !== null && this._touchStartX !== undefined) {
       const dx = point.x - this._touchStartX;
       const dy = point.y - this._touchStartY;
-      if (Math.sqrt(dx * dx + dy * dy) > 12) {
+      if (Math.sqrt(dx * dx + dy * dy) > CANCEL_DRAG_PX) {
         clearTimeout(this.longPressTimer);
         this.longPressTimer = null;
+        this._touchRow = undefined;
+        this._touchCol = undefined;
       }
     }
   }
