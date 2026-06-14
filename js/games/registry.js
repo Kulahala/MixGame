@@ -4,6 +4,7 @@ import MinesweeperScene from './minesweeper/index.js';
 import Game2048Scene from './game2048/index.js';
 import MemoryScene from './memory/index.js';
 import SlitherlinkScene from './slitherlink/index.js';
+import WoodKingdomScene from './woodkingdom/index.js';
 
 
 export const GAMES = [
@@ -101,6 +102,20 @@ export const GAMES = [
     ],
     themeColor: '#52677a',
     iconText: '圈'
+  },
+  {
+    id: 'woodkingdom',
+    name: '森之王国',
+    sceneClass: WoodKingdomScene,
+    formatScore: (scoreObj) => {
+      return scoreObj && scoreObj.bestTime ? '最佳时间 ' + scoreObj.bestTime + 's' : '...';
+    },
+    configTitle: '森之王国战役模式',
+    configOptions: [
+      { label: '开始新战役', value: { level: 1 } }
+    ],
+    themeColor: '#7a4f3f',
+    iconText: '森'
   }
 ];
 

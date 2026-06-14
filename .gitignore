@@ -28,3 +28,10 @@ plan.md
 
 # Deepwork progress
 .slim/deepwork/
+
+# Teamwork agent artifacts
+.agents/
+ORIGINAL_REQUEST.md
+PROJECT.md
+TEST_INFRA.md
+TEST_READY.md

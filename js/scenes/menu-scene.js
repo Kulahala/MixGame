@@ -23,9 +23,42 @@ export default class MenuScene {
     this.exitTime = 0;
     this.exitDuration = 200; // ms
     this.exitCallback = null;
+
+    // Touch-swipe navigation state
+    this.currentPage = 0; // 0 = Classic, 1 = Modern
+    this.swipeOffset = 0; // visual horizontal offset during dragging
+    this.touchStartX = 0;
+    this.touchStartY = 0;
+    this.isDragging = false;
+
+    // Swipe animation state
+    this.currentOffset = 0; // Current visual offset
+    this.targetOffset = 0;  // Target visual offset (0 or -width)
+    this.swipeTime = 0;
+    this.swipeStartOffset = 0;
   }
 
   update(dt = 16) {
+    const { width } = this.host;
+
+    // Handle horizontal page swiping animation
+    if (this.isDragging) {
+      this.currentOffset = -this.currentPage * width + this.swipeOffset;
+    } else if (this.currentOffset !== this.targetOffset) {
+      this.swipeTime += dt;
+      const duration = 200; // ms
+      const t = Math.min(1, this.swipeTime / duration);
+      // easeOutCubic
+      const ease = 1 - Math.pow(1 - t, 3);
+      this.currentOffset = this.swipeStartOffset + (this.targetOffset - this.swipeStartOffset) * ease;
+    }
+
+    // Sync button physical positions for click/hit test and rendering
+    this.cards.forEach((btn) => {
+      btn.x = btn.baseX + btn.page * width + this.currentOffset;
+    });
+
+    // Existing exit animation logic
     if (this.isExiting) {
       this.exitTime = Math.min(this.exitDuration, this.exitTime + dt);
       if (this.exitTime >= this.exitDuration && this.exitCallback) {
@@ -44,30 +77,39 @@ export default class MenuScene {
 
   init() {
     const { width, height } = this.host;
-    const count = GAMES.length;
-    const cols = count >= 3 ? 2 : 1;
-    const rows = Math.ceil(count / cols);
+    
+    // Categorize games in registry
+    const classicIds = ['sudoku', 'huarongdao', 'minesweeper', 'slitherlink'];
+    this.classicGames = GAMES.filter(g => classicIds.includes(g.id));
+    this.modernGames = GAMES.filter(g => !classicIds.includes(g.id));
+
+    const cols = 2;
+    const maxRows = Math.max(
+      Math.ceil(this.classicGames.length / cols),
+      Math.ceil(this.modernGames.length / cols)
+    );
 
     const isSmallScreen = height < 700;
-    const topArea = (isSmallScreen ? 120 : 160) + this.host.safeTop;
+    // Increase topArea slightly to allocate space for category tabs
+    const topArea = (isSmallScreen ? 130 : 170) + this.host.safeTop;
     const bottomArea = 42;
 
-    const margin = cols === 2 ? 16 : 24;
-    const colGap = cols === 2 ? 12 : 0;
-    const rowGap = cols === 2 ? 12 : 18;
+    const margin = 16;
+    const colGap = 12;
+    const rowGap = isSmallScreen ? 10 : 12;
 
-    const cardW = cols === 2
-      ? Math.floor((width - margin * 2 - colGap) / 2)
-      : width - margin * 2;
+    const cardW = Math.floor((width - margin * 2 - colGap) / 2);
 
-    const availableHeight = height - topArea - bottomArea - rowGap * (rows - 1);
-    let cardH = Math.floor(availableHeight / rows);
+    const availableHeight = height - topArea - bottomArea - rowGap * (maxRows - 1);
+    let cardH = Math.floor(availableHeight / maxRows);
     cardH = Math.max(cardH, 80);
     cardH = Math.min(cardH, 140);
 
-    this._layout = { cols, rows, margin, colGap, rowGap, cardW, cardH, topArea };
+    this._layout = { cols, maxRows, margin, colGap, rowGap, cardW, cardH, topArea };
+    this.cards = [];
 
-    this.cards = GAMES.map((game, index) => {
+    // Initialize Page 0 (Classic)
+    this.classicGames.forEach((game, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
       const x = margin + col * (cardW + colGap);
@@ -84,8 +126,38 @@ export default class MenuScene {
         variant: 'secondary',
         onClick: () => this.showGameConfig(game),
       });
+      btn.page = 0;
+      btn.baseX = x;
+      btn.game = game;
+      btn.pageIndex = index;
       this.input.add(btn);
-      return btn;
+      this.cards.push(btn);
+    });
+
+    // Initialize Page 1 (Modern)
+    this.modernGames.forEach((game, index) => {
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      const x = margin + col * (cardW + colGap);
+      const y = topArea + row * (cardH + rowGap);
+
+      const scoreData = this.scores[game.id];
+      const btn = new Button({
+        x: x + width, // Shifted by width
+        y,
+        w: cardW,
+        h: cardH,
+        label: game.name,
+        detail: game.formatScore(scoreData),
+        variant: 'secondary',
+        onClick: () => this.showGameConfig(game),
+      });
+      btn.page = 1;
+      btn.baseX = x;
+      btn.game = game;
+      btn.pageIndex = index;
+      this.input.add(btn);
+      this.cards.push(btn);
     });
   }
 
@@ -158,6 +230,7 @@ export default class MenuScene {
     ctx.globalAlpha = exitAlpha;
     ctx.translate(0, exitOffset);
 
+    // Render Backdrop and Header info
     ctx.save();
     ctx.globalAlpha = exitAlpha * reveal;
     ctx.translate(0, (1 - reveal) * 10);
@@ -165,10 +238,10 @@ export default class MenuScene {
 
     const layout = this._layout || { topArea: 160 };
     const topArea = layout.topArea;
-    const titleY = Math.round(topArea * 0.38);
-    const subtitleY = Math.round(topArea * 0.62);
-    const titleSize = topArea < 140 ? 28 : 36;
-    const subtitleSize = topArea < 140 ? 13 : 14;
+    const titleY = Math.round(topArea * 0.32);
+    const subtitleY = Math.round(topArea * 0.52);
+    const titleSize = topArea < 140 ? 26 : 32;
+    const subtitleSize = topArea < 140 ? 12 : 13;
 
     drawText(ctx, '静游集', width / 2, titleY, {
       size: titleSize,
@@ -186,9 +259,19 @@ export default class MenuScene {
       baseline: 'middle',
       font: theme.font.body,
     });
+
+    // Draw Category Tabs and the sliding underline inside the header container
+    this.renderCategoryTabs(ctx);
     ctx.restore();
 
-    this.cards.forEach((card, index) => this.renderGameCard(ctx, card, index, exitAlpha));
+    // Render game cards with offscreen culling
+    this.cards.forEach((card, index) => {
+      // Offscreen culling: skip rendering if cards are shifted completely out of view
+      if (card.x + card.w < 0 || card.x > width) {
+        return;
+      }
+      this.renderGameCard(ctx, card, index, exitAlpha);
+    });
 
     drawText(ctx, this.bottomQuote, width / 2, height - 42, {
       size: 12,
@@ -210,8 +293,8 @@ export default class MenuScene {
     const width = this.host.width;
     const topArea = (this._layout && this._layout.topArea) || 160;
 
-    const frameY = Math.round(topArea * 0.15);
-    const frameH = Math.round(topArea * 0.6);
+    const frameY = Math.round(topArea * 0.12);
+    const frameH = Math.round(topArea * 0.65);
     const frameBottom = frameY + frameH;
     const lineY = frameBottom - 2;
     const crossY = Math.round(frameY + frameH * 0.46);
@@ -239,9 +322,60 @@ export default class MenuScene {
     ctx.restore();
   }
 
+  renderCategoryTabs(ctx) {
+    const { width } = this.host;
+    const theme = this.theme;
+    const layout = this._layout || { topArea: 160 };
+    const topArea = layout.topArea;
+    const tabY = topArea - 28;
+
+    // Calculate progress fraction (0 = Classic, 1 = Modern)
+    const progress = -this.currentOffset / width;
+
+    // Tab text colors
+    const tab0Color = progress < 0.5 ? theme.color.ink : theme.color.muted;
+    const tab1Color = progress >= 0.5 ? theme.color.ink : theme.color.muted;
+
+    // Tab 0: 经典
+    drawText(ctx, '经典', width / 2 - 60, tabY, {
+      size: 15,
+      color: tab0Color,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.title,
+      weight: progress < 0.5 ? '600' : 'normal',
+    });
+
+    // Tab 1: 现代
+    drawText(ctx, '现代', width / 2 + 60, tabY, {
+      size: 15,
+      color: tab1Color,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.title,
+      weight: progress >= 0.5 ? '600' : 'normal',
+    });
+
+    // Sliding underline
+    const underlineW = 32;
+    const underlineH = 3;
+    const underlineX = (width / 2 - 60) + progress * 120;
+    const underlineY = tabY + 12;
+
+    fillRoundRect(
+      ctx,
+      underlineX - underlineW / 2,
+      underlineY - underlineH / 2,
+      underlineW,
+      underlineH,
+      underlineH / 2,
+      theme.color.accent
+    );
+  }
+
   renderGameCard(ctx, card, index, exitAlpha) {
     const theme = this.theme;
-    const game = GAMES[index];
+    const game = card.game;
     const accent = game.themeColor || theme.color.sage;
     const layout = this._layout || { cols: 1 };
     const cols = layout.cols;
@@ -273,6 +407,8 @@ export default class MenuScene {
     ctx.fillRect(card.x, card.y + 18, 4, card.h - 36);
     ctx.globalAlpha = exitAlpha * reveal;
 
+    // Card numbering and texts
+    const displayIndex = card.pageIndex + 1; // 01, 02 per page style
     if (cols === 2) {
       const padX = 12;
       const numSize = 11;
@@ -283,7 +419,7 @@ export default class MenuScene {
       const iconX = card.x + card.w - iconSize - 10;
       const iconY = card.y + card.h * 0.35 - iconSize / 2;
 
-      drawText(ctx, String(index + 1).padStart(2, '0'), card.x + padX, card.y + 16, {
+      drawText(ctx, String(displayIndex).padStart(2, '0'), card.x + padX, card.y + 16, {
         size: numSize,
         color: theme.color.gold,
         align: 'left',
@@ -326,7 +462,7 @@ export default class MenuScene {
       const iconX = card.x + card.w - 68;
       const iconY = card.y + 34;
 
-      drawText(ctx, String(index + 1).padStart(2, '0'), card.x + 28, card.y + 32, {
+      drawText(ctx, String(displayIndex).padStart(2, '0'), card.x + 28, card.y + 32, {
         size: 13,
         color: theme.color.gold,
         align: 'left',
@@ -385,17 +521,122 @@ export default class MenuScene {
 
   onTouchStart(point) {
     if (this.isExiting) return;
+
+    // Check if configuration modal is active
+    if (this.modal) {
+      this.input.onTouchStart(point.x, point.y);
+      return;
+    }
+
+    const { width } = this.host;
+    const layout = this._layout || { topArea: 160 };
+    const topArea = layout.topArea;
+
+    // Interactive Tab Clicking: Check if click is on the Category Tabs
+    const tabY = topArea - 28;
+    if (Math.abs(point.y - tabY) < 20) {
+      // Tab 0 (Classic)
+      if (Math.abs(point.x - (width / 2 - 60)) < 40) {
+        if (this.currentPage !== 0) {
+          this.currentPage = 0;
+          this.targetOffset = 0;
+          this.swipeStartOffset = this.currentOffset;
+          this.swipeTime = 0;
+        }
+        return;
+      }
+      // Tab 1 (Modern)
+      if (Math.abs(point.x - (width / 2 + 60)) < 40) {
+        if (this.currentPage !== 1) {
+          this.currentPage = 1;
+          this.targetOffset = -width;
+          this.swipeStartOffset = this.currentOffset;
+          this.swipeTime = 0;
+        }
+        return;
+      }
+    }
+
+    // Record swipe start details
+    this.touchStartX = point.x;
+    this.touchStartY = point.y;
+    this.isDragging = false;
+    this.swipeOffset = 0;
+
+    // Also pass to button hit-testing
     this.input.onTouchStart(point.x, point.y);
   }
 
   onTouchMove(point) {
     if (this.isExiting) return;
-    this.input.onTouchMove(point.x, point.y);
+
+    // Check if configuration modal is active
+    if (this.modal) {
+      this.input.onTouchMove(point.x, point.y);
+      return;
+    }
+
+    const deltaX = point.x - this.touchStartX;
+    const deltaY = point.y - this.touchStartY;
+
+    if (!this.isDragging) {
+      // Horizontal swipe threshold: 10px, and horizontal move must be dominant
+      if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        this.isDragging = true;
+
+        // Cancel any active button receiver (prevent clicking while swiping)
+        if (this.input.activeReceiver) {
+          if (this.input.activeReceiver.release) {
+            this.input.activeReceiver.release();
+          }
+          this.input.activeReceiver = null;
+        }
+      }
+    }
+
+    if (this.isDragging) {
+      // Apply rubber band resistance at boundaries
+      if (this.currentPage === 0 && deltaX > 0) {
+        this.swipeOffset = deltaX * 0.3;
+      } else if (this.currentPage === 1 && deltaX < 0) {
+        this.swipeOffset = deltaX * 0.3;
+      } else {
+        this.swipeOffset = deltaX;
+      }
+    } else {
+      this.input.onTouchMove(point.x, point.y);
+    }
   }
 
   onTouchEnd(point) {
     if (this.isExiting) return;
-    this.input.onTouchEnd(point.x, point.y);
+
+    // Check if configuration modal is active
+    if (this.modal) {
+      this.input.onTouchEnd(point.x, point.y);
+      return;
+    }
+
+    if (this.isDragging) {
+      const { width } = this.host;
+      let targetPage = this.currentPage;
+      const threshold = width * 0.25;
+
+      if (this.swipeOffset < -threshold && this.currentPage === 0) {
+        targetPage = 1;
+      } else if (this.swipeOffset > threshold && this.currentPage === 1) {
+        targetPage = 0;
+      }
+
+      this.currentPage = targetPage;
+      this.targetOffset = -this.currentPage * width;
+      this.swipeStartOffset = this.currentOffset;
+      this.swipeTime = 0;
+      this.isDragging = false;
+      this.swipeOffset = 0;
+    } else {
+      this.input.onTouchEnd(point.x, point.y);
+    }
   }
 
   destroy() {

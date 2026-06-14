@@ -11,5 +11,8 @@ export default class Main {
   constructor() {
     this.host = new GameHost(ctx);
     this.host.start();
+    if (typeof window !== 'undefined') {
+      window.gameHost = this.host;
+    }
   }
 }

@@ -43,6 +43,13 @@ const DEFAULT_SCORES = {
     plays: 0,
     history: [],
   },
+  woodkingdom: {
+    bestScore: 0,
+    bestTime: 0,
+    bestSteps: 0,
+    plays: 0,
+    history: [],
+  },
 };
 
 function cloneDefaultScores() {
@@ -70,7 +77,11 @@ export function saveScore(gameId, result) {
     lastLevelId: result.levelId || current.lastLevelId || '',
   });
 
-  if (!current.bestScore || result.score > current.bestScore) {
+  const isBest = gameId === 'woodkingdom'
+    ? (!current.bestTime || (result.time && result.time < current.bestTime))
+    : (!current.bestScore || result.score > current.bestScore);
+
+  if (isBest) {
     next.bestScore = result.score;
     next.bestTime = result.time || 0;
     next.bestSteps = result.steps || 0;
@@ -79,7 +90,7 @@ export function saveScore(gameId, result) {
     next.bestLevelId = result.levelId || '';
   }
 
-  // ── History (最多 3 条，按 score 降序) ───────────────
+  // ── History (最多 3 条，按 score 降序，woodkingdom 按 time 升序) ───────────────
   const history = (current.history || []).slice();
   if (result.won !== false) {
     const entry = {};
@@ -87,7 +98,11 @@ export function saveScore(gameId, result) {
       if (result[key] !== undefined) entry[key] = result[key];
     }
     history.push(entry);
-    history.sort((a, b) => (b.score || 0) - (a.score || 0));
+    if (gameId === 'woodkingdom') {
+      history.sort((a, b) => (a.time || 0) - (b.time || 0));
+    } else {
+      history.sort((a, b) => (b.score || 0) - (a.score || 0));
+    }
     next.history = history.slice(0, 3);
   } else {
     next.history = history;
