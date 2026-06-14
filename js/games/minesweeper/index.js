@@ -27,8 +27,7 @@ export default class MinesweeperScene extends BaseGameScene {
     this.state = new MinesweeperState(rows, cols, mines);
     this.isFlagMode = false;
     this.resultShown = false;
-    this.longPressTimer = null;
-    this.longPressTriggered = false;
+    this._touch = null;
   }
 
   init() {
@@ -236,19 +235,20 @@ export default class MinesweeperScene extends BaseGameScene {
 
       if (row < 0 || row >= state.rows || col < 0 || col >= state.cols) return;
 
-      // 记录触摸起始位置，用于长按检测
-      this._touchStartX = point.x;
-      this._touchStartY = point.y;
-      this._touchRow = row;
-      this._touchCol = col;
-      this.longPressTriggered = false;
-
-      // 启动长按定时器，长按固定插旗/取消旗，不受当前模式影响
-      this.longPressTimer = setTimeout(() => {
-        this.longPressTriggered = true;
-        this.longPressTimer = null;
-        state.toggleFlag(row, col);
-      }, LONG_PRESS_MS);
+      // 记录触摸状态，用于长按检测和短按分发
+      const touch = {
+        startX: point.x,
+        startY: point.y,
+        row,
+        col,
+        longPressTriggered: false,
+        timer: setTimeout(() => {
+          touch.longPressTriggered = true;
+          touch.timer = null;
+          state.toggleFlag(row, col);
+        }, LONG_PRESS_MS),
+      };
+      this._touch = touch;
     }
   }
 
@@ -257,14 +257,14 @@ export default class MinesweeperScene extends BaseGameScene {
     this.input.onTouchMove(point.x, point.y);
 
     // 手指移动超过阈值取消长按，同时取消本次触摸的短按
-    if (this.longPressTimer !== null && this._touchStartX !== undefined) {
-      const dx = point.x - this._touchStartX;
-      const dy = point.y - this._touchStartY;
+    const touch = this._touch;
+    if (touch && touch.timer) {
+      const dx = point.x - touch.startX;
+      const dy = point.y - touch.startY;
       if (Math.sqrt(dx * dx + dy * dy) > CANCEL_DRAG_PX) {
-        clearTimeout(this.longPressTimer);
-        this.longPressTimer = null;
-        this._touchRow = undefined;
-        this._touchCol = undefined;
+        clearTimeout(touch.timer);
+        touch.timer = null;
+        this._touch = null;
       }
     }
   }
@@ -273,45 +273,32 @@ export default class MinesweeperScene extends BaseGameScene {
     if (this.isExiting) return;
     this.input.onTouchEnd(point.x, point.y);
 
+    const touch = this._touch;
+    this._touch = null;
+
+    if (!touch) return;
+
     // 清理定时器
-    if (this.longPressTimer !== null) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
+    if (touch.timer) {
+      clearTimeout(touch.timer);
     }
 
     // 长按已触发 → 跳过短按逻辑
-    if (this.longPressTriggered) {
-      this.longPressTriggered = false;
-      this._touchRow = undefined;
-      this._touchCol = undefined;
-      this._touchStartX = undefined;
-      this._touchStartY = undefined;
-      return;
-    }
+    if (touch.longPressTriggered) return;
 
     // 短按：根据当前模式执行操作
-    if (this._touchRow !== undefined && this._touchCol !== undefined) {
-      const { state } = this;
-      const row = this._touchRow;
-      const col = this._touchCol;
-      if (this.isFlagMode) {
-        state.toggleFlag(row, col);
-      } else {
-        state.reveal(row, col);
-      }
+    if (this.isFlagMode) {
+      this.state.toggleFlag(touch.row, touch.col);
+    } else {
+      this.state.reveal(touch.row, touch.col);
     }
-
-    this._touchRow = undefined;
-    this._touchCol = undefined;
-    this._touchStartX = undefined;
-    this._touchStartY = undefined;
   }
 
   destroy() {
-    if (this.longPressTimer !== null) {
-      clearTimeout(this.longPressTimer);
-      this.longPressTimer = null;
+    if (this._touch && this._touch.timer) {
+      clearTimeout(this._touch.timer);
     }
+    this._touch = null;
     super.destroy();
   }
 }
