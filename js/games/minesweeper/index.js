@@ -103,9 +103,10 @@ export default class MinesweeperScene extends BaseGameScene {
 
   renderHeader(ctx) {
     const theme = this.theme;
+    const safeTop = this.host.safeTop;
     const remaining = this.state.totalMines - this.state.getFlagCount();
 
-    drawText(ctx, '扫雷', this.host.width / 2, 90, {
+    drawText(ctx, '扫雷', this.host.width / 2, safeTop + 90, {
       size: 23,
       color: theme.color.ink,
       align: 'center',
@@ -114,7 +115,7 @@ export default class MinesweeperScene extends BaseGameScene {
       weight: '600',
     });
 
-    drawText(ctx, `剩余 ${remaining} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, 116, {
+    drawText(ctx, `剩余 ${remaining} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, safeTop + 116, {
       size: 13,
       color: theme.color.muted,
       align: 'center',

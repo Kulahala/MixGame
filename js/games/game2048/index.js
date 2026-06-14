@@ -96,8 +96,10 @@ export default class Game2048Scene extends BaseGameScene {
   renderGame(ctx) {
     const theme = this.theme;
 
+    const safeTop = this.host.safeTop;
+
     // ── Header ──────────────────────────────────────
-    drawText(ctx, '2048', this.host.width / 2, 90, {
+    drawText(ctx, '2048', this.host.width / 2, safeTop + 90, {
       size: 28,
       color: theme.color.ink,
       align: 'center',
@@ -106,7 +108,7 @@ export default class Game2048Scene extends BaseGameScene {
       weight: '600',
     });
 
-    drawText(ctx, `分数：${this.state.score}`, this.host.width / 2, 125, {
+    drawText(ctx, `分数：${this.state.score}`, this.host.width / 2, safeTop + 125, {
       size: 16,
       color: theme.color.muted,
       align: 'center',
