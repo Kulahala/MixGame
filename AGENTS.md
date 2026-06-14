@@ -71,3 +71,5 @@ Pull requests should include a behavior summary, affected files, verification no
 ## Agent-Specific Instructions
 
 Read the real files before changing behavior. Keep edits narrow, avoid broad refactors, and preserve user assets and local configuration unless explicitly asked to change them.
+
+`plan.md` is a local multi-agent collaboration file. Read it before coordinated planning or review, write cross-agent feedback under its Feedback section, and keep it ignored rather than pushing it to GitHub.

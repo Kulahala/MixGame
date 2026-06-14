@@ -1,33 +1,33 @@
 import Button from '../../ui/button.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
-import { saveScore } from '../../core/storage.js';
-import { LEVELS } from './levels.js';
-
-function clonePieces(pieces) {
-  return pieces.map((piece) => Object.assign({}, piece));
-}
+import HuarongdaoState from './state.js';
+import InputDispatcher from '../../core/input-dispatcher.js';
 
 export default class HuarongdaoScene {
-  constructor(host) {
+  constructor(host, options = {}) {
     this.host = host;
     this.theme = host.theme;
-    this.level = LEVELS[0];
-    this.pieces = clonePieces(this.level.pieces);
-    this.selectedId = 'cao';
-    this.steps = 0;
-    this.completed = false;
-    this.saved = false;
-    this.startTime = Date.now();
+    
+    this.state = new HuarongdaoState(options.size || 4);
+    
     this.buttons = [];
+    this.touchStartPoint = null;
+    this.touchStartGrid = null;
+    this.input = new InputDispatcher();
   }
 
   init() {
     const width = this.host.width;
-    this.boardW = Math.min(width - 64, 320);
-    this.cell = this.boardW / this.level.width;
-    this.boardH = this.cell * this.level.height;
-    this.boardX = (width - this.boardW) / 2;
-    this.boardY = 146;
+    this.boardSize = Math.min(width - 32, 342);
+    this.cell = this.boardSize / this.state.size;
+    this.boardX = (width - this.boardSize) / 2;
+    this.boardY = 164;
+    
+    this.setupButtons();
+  }
+
+  setupButtons() {
+    const width = this.host.width;
     this.backButton = new Button({
       x: 18,
       y: 34,
@@ -44,48 +44,18 @@ export default class HuarongdaoScene {
       h: 36,
       label: '重开',
       variant: 'ghost',
-      onClick: () => this.reset(),
+      onClick: () => this.state.reset(),
     });
     this.buttons = [this.backButton, this.resetButton];
-  }
-
-  reset() {
-    this.pieces = clonePieces(this.level.pieces);
-    this.selectedId = 'cao';
-    this.steps = 0;
-    this.completed = false;
-    this.saved = false;
-    this.startTime = Date.now();
+    this.buttons.forEach(b => this.input.add(b));
   }
 
   update() {
-    if (!this.completed && this.isSolved()) {
-      this.completed = true;
-      this.saveResult();
+    if (!this.state.completed && this.state.isSolved()) {
+      this.state.completed = true;
+      this.state.saveResult();
+      this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
     }
-  }
-
-  getElapsed() {
-    return Math.floor((Date.now() - this.startTime) / 1000);
-  }
-
-  saveResult() {
-    if (this.saved) return;
-    const time = this.getElapsed();
-    const score = Math.max(100, 1200 - this.steps * 12 - time * 2);
-    saveScore('huarongdao', {
-      score,
-      steps: this.steps,
-      time,
-      difficulty: 'easy',
-      levelId: this.level.id,
-    });
-    this.saved = true;
-  }
-
-  isSolved() {
-    const cao = this.pieces.find((piece) => piece.id === 'cao');
-    return cao.x === 1 && cao.y === 3;
   }
 
   render(ctx) {
@@ -98,12 +68,10 @@ export default class HuarongdaoScene {
     ctx.save();
     ctx.globalAlpha = reveal;
     ctx.translate(0, (1 - reveal) * 10);
-    this.backButton.render(ctx, theme);
-    this.resetButton.render(ctx, theme);
+    this.buttons.forEach(b => b.render(ctx, theme));
     this.renderHeader(ctx);
     this.renderBoard(ctx);
-    this.renderControls(ctx);
-    if (this.completed) {
+    if (this.state.completed) {
       this.renderComplete(ctx);
     }
     ctx.restore();
@@ -111,7 +79,7 @@ export default class HuarongdaoScene {
 
   renderHeader(ctx) {
     const theme = this.theme;
-    drawText(ctx, '华容道', this.host.width / 2, 52, {
+    drawText(ctx, '数字华容道', this.host.width / 2, 52, {
       size: 25,
       color: theme.color.ink,
       align: 'center',
@@ -119,7 +87,7 @@ export default class HuarongdaoScene {
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `${this.level.title} · ${this.steps} 步 · ${this.getElapsed()}s`, this.host.width / 2, 102, {
+    drawText(ctx, `${this.state.size}x${this.state.size} 难度 · ${this.state.steps} 步 · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, 102, {
       size: 13,
       color: theme.color.muted,
       align: 'center',
@@ -133,75 +101,34 @@ export default class HuarongdaoScene {
     const x = this.boardX;
     const y = this.boardY;
 
-    fillRoundRect(ctx, x - 10, y - 10, this.boardW + 20, this.boardH + 20, 20, theme.color.paper);
-    strokeRoundRect(ctx, x - 10, y - 10, this.boardW + 20, this.boardH + 20, 20, theme.color.line, 1);
+    fillRoundRect(ctx, x - 8, y - 8, this.boardSize + 16, this.boardSize + 16, 18, theme.color.paper);
+    strokeRoundRect(ctx, x - 8, y - 8, this.boardSize + 16, this.boardSize + 16, 18, theme.color.line, 1);
 
-    ctx.fillStyle = '#e8dfd2';
-    ctx.fillRect(x + this.cell, y + this.cell * 4 + 4, this.cell * 2, 10);
-    drawText(ctx, '出口', x + this.boardW / 2, y + this.boardH + 24, {
-      size: 12,
-      color: theme.color.gold,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
+    const padding = 4;
+    const innerCell = this.cell - padding * 2;
 
-    for (let i = 0; i <= this.level.width; i++) {
-      ctx.strokeStyle = '#eee8df';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x + i * this.cell, y);
-      ctx.lineTo(x + i * this.cell, y + this.boardH);
-      ctx.stroke();
+    for (let r = 0; r < this.state.size; r++) {
+      for (let c = 0; c < this.state.size; c++) {
+        const val = this.state.grid[r][c];
+        if (val === 0) continue;
+        
+        const cellX = x + c * this.cell + padding;
+        const cellY = y + r * this.cell + padding;
+
+        const isCorrect = val === r * this.state.size + c + 1;
+        const bg = isCorrect ? theme.color.sage : theme.color.ink;
+        
+        fillRoundRect(ctx, cellX, cellY, innerCell, innerCell, 12, bg);
+        drawText(ctx, String(val), cellX + innerCell / 2, cellY + innerCell / 2 + 1, {
+          size: innerCell * 0.45,
+          color: theme.color.white,
+          align: 'center',
+          baseline: 'middle',
+          font: theme.font.body,
+          weight: '600',
+        });
+      }
     }
-    for (let i = 0; i <= this.level.height; i++) {
-      ctx.beginPath();
-      ctx.moveTo(x, y + i * this.cell);
-      ctx.lineTo(x + this.boardW, y + i * this.cell);
-      ctx.stroke();
-    }
-
-    this.pieces.forEach((piece) => this.renderPiece(ctx, piece));
-  }
-
-  renderPiece(ctx, piece) {
-    const theme = this.theme;
-    const padding = 6;
-    const x = this.boardX + piece.x * this.cell + padding;
-    const y = this.boardY + piece.y * this.cell + padding;
-    const w = piece.w * this.cell - padding * 2;
-    const h = piece.h * this.cell - padding * 2;
-    const selected = piece.id === this.selectedId;
-    const colorMap = {
-      king: theme.color.accent,
-      vertical: theme.color.sage,
-      horizontal: theme.color.blue,
-      small: theme.color.paperDeep,
-    };
-    const textColor = piece.role === 'small' ? theme.color.ink : theme.color.white;
-
-    fillRoundRect(ctx, x, y, w, h, 12, colorMap[piece.role]);
-    strokeRoundRect(ctx, x, y, w, h, 12, selected ? theme.color.gold : '#00000022', selected ? 2 : 1);
-    drawText(ctx, piece.name, x + w / 2, y + h / 2, {
-      size: piece.role === 'small' ? 18 : 19,
-      color: textColor,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-      weight: '600',
-    });
-  }
-
-  renderControls(ctx) {
-    const theme = this.theme;
-    const y = this.boardY + this.boardH + 54;
-    drawText(ctx, '选棋 · 点空位 · 曹操至出口', this.host.width / 2, y, {
-      size: 12,
-      color: theme.color.faint,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.body,
-    });
   }
 
   renderComplete(ctx) {
@@ -219,7 +146,7 @@ export default class HuarongdaoScene {
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `得分 ${Math.max(100, 1200 - this.steps * 12 - this.getElapsed() * 2)} · 已保存到本地`, this.host.width / 2, y + 56, {
+    drawText(ctx, `得分 ${Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps * 10)} · 已保存`, this.host.width / 2, y + 56, {
       size: 13,
       color: '#e8e2d9',
       align: 'center',
@@ -229,85 +156,53 @@ export default class HuarongdaoScene {
   }
 
   onTouchStart(point) {
-    const button = this.buttons.find((item) => item.hit(point.x, point.y));
-    if (button) {
-      button.press();
-      return;
+    if (this.input.onTouchStart(point.x, point.y)) return;
+
+    if (contains({ x: this.boardX, y: this.boardY, w: this.boardSize, h: this.boardSize }, point.x, point.y)) {
+      this.touchStartPoint = point;
+      this.touchStartGrid = {
+        r: Math.floor((point.y - this.boardY) / this.cell),
+        c: Math.floor((point.x - this.boardX) / this.cell),
+      };
     }
+  }
 
-    if (!contains({ x: this.boardX, y: this.boardY, w: this.boardW, h: this.boardH }, point.x, point.y)) {
-      return;
+  onTouchMove(point) {
+    this.input.onTouchMove(point.x, point.y);
+  }
+
+  onTouchEnd(point) {
+    this.input.onTouchEnd(point.x, point.y);
+
+    if (this.touchStartPoint && this.touchStartGrid) {
+      const dx = point.x - this.touchStartPoint.x;
+      const dy = point.y - this.touchStartPoint.y;
+      
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < 10) {
+        // Click
+        this.state.tryMoveGrid(this.touchStartGrid.r, this.touchStartGrid.c);
+      } else {
+        // Swipe
+        const tr = this.touchStartGrid.r;
+        const tc = this.touchStartGrid.c;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Horizontal swipe
+          if (dx > 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c > tc) this.state.tryMoveGrid(tr, tc);
+          if (dx < 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c < tc) this.state.tryMoveGrid(tr, tc);
+        } else {
+          // Vertical swipe
+          if (dy > 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r > tr) this.state.tryMoveGrid(tr, tc);
+          if (dy < 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r < tr) this.state.tryMoveGrid(tr, tc);
+        }
+      }
     }
-
-    const gridX = Math.floor((point.x - this.boardX) / this.cell);
-    const gridY = Math.floor((point.y - this.boardY) / this.cell);
-    const piece = this.findPieceAt(gridX, gridY);
-
-    if (piece) {
-      this.selectedId = piece.id;
-      return;
-    }
-
-    this.tryMoveSelected(gridX, gridY);
+    
+    this.touchStartPoint = null;
+    this.touchStartGrid = null;
   }
 
   destroy() {
-    this.buttons.forEach((button) => button.destroy && button.destroy());
-  }
-
-  findPieceAt(x, y) {
-    return this.pieces.find((piece) => x >= piece.x && x < piece.x + piece.w && y >= piece.y && y < piece.y + piece.h);
-  }
-
-  tryMoveSelected(targetX, targetY) {
-    if (this.completed) return;
-    const piece = this.pieces.find((item) => item.id === this.selectedId);
-    if (!piece) return;
-
-    const directions = [
-      { dx: 0, dy: -1 },
-      { dx: 0, dy: 1 },
-      { dx: -1, dy: 0 },
-      { dx: 1, dy: 0 },
-    ];
-
-    for (let i = 0; i < directions.length; i++) {
-      const direction = directions[i];
-      const nx = piece.x + direction.dx;
-      const ny = piece.y + direction.dy;
-      if (!this.pieceWouldContain(piece, nx, ny, targetX, targetY)) continue;
-      if (this.canMove(piece, direction.dx, direction.dy)) {
-        piece.x = nx;
-        piece.y = ny;
-        this.steps++;
-      }
-      return;
-    }
-  }
-
-  pieceWouldContain(piece, x, y, targetX, targetY) {
-    return targetX >= x && targetX < x + piece.w && targetY >= y && targetY < y + piece.h;
-  }
-
-  canMove(piece, dx, dy) {
-    const next = {
-      x: piece.x + dx,
-      y: piece.y + dy,
-      w: piece.w,
-      h: piece.h,
-    };
-
-    if (next.x < 0 || next.y < 0 || next.x + next.w > this.level.width || next.y + next.h > this.level.height) {
-      return false;
-    }
-
-    return !this.pieces.some((other) => {
-      if (other.id === piece.id) return false;
-      return this.overlap(next, other);
-    });
-  }
-
-  overlap(a, b) {
-    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    this.buttons.forEach((b) => b.destroy && b.destroy());
   }
 }

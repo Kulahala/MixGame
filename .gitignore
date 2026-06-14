@@ -22,3 +22,6 @@ Thumbs.db
 .playwright-mcp/
 *-preview.png
 feedback-*.png
+
+# Local multi-agent planning
+plan.md

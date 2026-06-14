@@ -1,8 +1,8 @@
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from '../render.js';
 import elegantTheme from '../themes/elegant.js';
 import MenuScene from '../scenes/menu-scene.js';
-import SudokuScene from '../games/sudoku/index.js';
-import HuarongdaoScene from '../games/huarongdao/index.js';
+import { getGameConfig } from '../games/registry.js';
+import Confetti from '../ui/confetti.js';
 
 export default class GameHost {
   constructor(ctx) {
@@ -14,6 +14,7 @@ export default class GameHost {
     this.aniId = 0;
     this.lastTime = 0;
     this.sceneAge = 0;
+    this.effects = { confetti: new Confetti(this) };
     this.bindTouchEvents();
   }
 
@@ -23,29 +24,29 @@ export default class GameHost {
   }
 
   bindTouchEvents() {
-    wx.onTouchStart((event) => this.dispatchTouch('onTouchStart', event));
-    wx.onTouchMove((event) => this.dispatchTouch('onTouchMove', event));
-    wx.onTouchEnd((event) => this.dispatchTouch('onTouchEnd', event));
-    wx.onTouchCancel((event) => this.dispatchTouch('onTouchEnd', event));
-  }
+    const dispatchTouch = (method, e, useChanged = false) => {
+      const touches = useChanged ? e.changedTouches : e.touches;
+      if (!touches || touches.length === 0) return;
+      const touch = touches[0];
+      if (this.scene && this.scene[method]) {
+        this.scene[method]({ x: touch.clientX, y: touch.clientY });
+      }
+    };
 
-  dispatchTouch(method, event) {
-    if (!this.scene || !this.scene[method]) return;
-    const touch = event.touches && event.touches[0] ? event.touches[0] : event.changedTouches && event.changedTouches[0];
-    if (!touch) return;
-    this.scene[method]({
-      x: touch.clientX,
-      y: touch.clientY,
-      raw: event,
-    });
+    wx.onTouchStart((e) => dispatchTouch('onTouchStart', e));
+    wx.onTouchMove((e) => dispatchTouch('onTouchMove', e));
+    wx.onTouchEnd((e) => dispatchTouch('onTouchEnd', e, true));
+    if (wx.onTouchCancel) {
+      wx.onTouchCancel((e) => dispatchTouch('onTouchEnd', e, true));
+    }
   }
 
   setScene(scene) {
     if (this.scene && this.scene.destroy) {
       this.scene.destroy();
     }
-    this.scene = scene;
     this.sceneAge = 0;
+    this.scene = scene;
     if (this.scene.init) {
       this.scene.init();
     }
@@ -55,13 +56,11 @@ export default class GameHost {
     this.setScene(new MenuScene(this));
   }
 
-  startGame(id) {
-    if (id === 'sudoku') {
-      this.setScene(new SudokuScene(this));
-      return;
-    }
-    if (id === 'huarongdao') {
-      this.setScene(new HuarongdaoScene(this));
+  startGame(id, options = {}) {
+    const config = getGameConfig(id);
+    if (config && config.sceneClass) {
+      const SceneClass = config.sceneClass;
+      this.setScene(new SceneClass(this, options));
     }
   }
 
@@ -81,9 +80,20 @@ export default class GameHost {
     if (this.scene && this.scene.update) {
       this.scene.update(dt);
     }
+    
+    // Effects update
+    Object.values(this.effects).forEach(effect => {
+      if (effect.update) effect.update(dt);
+    });
+
     if (this.scene && this.scene.render) {
       this.scene.render(this.ctx);
     }
+
+    // Effects render
+    Object.values(this.effects).forEach(effect => {
+      if (effect.render) effect.render(this.ctx);
+    });
 
     this.aniId = requestAnimationFrame(this.loop.bind(this));
   }

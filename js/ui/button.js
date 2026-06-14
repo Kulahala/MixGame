@@ -11,8 +11,6 @@ export default class Button {
     this.variant = options.variant || 'primary';
     this.onClick = options.onClick || function noop() {};
     this.isPressed = false;
-    this.pressDelay = options.pressDelay || 90;
-    this.pressTimer = null;
   }
 
   setFrame(x, y, w, h) {
@@ -26,25 +24,31 @@ export default class Button {
     return contains(this, x, y);
   }
 
-  press() {
-    if (this.pressTimer) {
-      clearTimeout(this.pressTimer);
-      this.pressTimer = null;
+  onTouchStart(x, y) {
+    if (this.hit(x, y)) {
+      this.isPressed = true;
+      return true;
     }
+    return false;
+  }
 
-    this.isPressed = true;
-    this.pressTimer = setTimeout(() => {
+  onTouchMove(x, y) {
+    if (!this.isPressed) return;
+    if (!this.hit(x, y)) {
       this.isPressed = false;
-      this.pressTimer = null;
-      this.onClick();
-    }, this.pressDelay);
+    }
+  }
+
+  onTouchEnd(x, y) {
+    if (this.isPressed) {
+      this.isPressed = false;
+      if (this.hit(x, y)) {
+        this.onClick();
+      }
+    }
   }
 
   release() {
-    if (this.pressTimer) {
-      clearTimeout(this.pressTimer);
-      this.pressTimer = null;
-    }
     this.isPressed = false;
   }
 

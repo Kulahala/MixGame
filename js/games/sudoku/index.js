@@ -1,27 +1,31 @@
 import Button from '../../ui/button.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
-import { saveScore } from '../../core/storage.js';
 import { PUZZLE, SOLUTION } from './puzzle.js';
-
-function cloneGrid(grid) {
-  return grid.map((row) => row.slice());
-}
+import { generateSudoku } from './generator.js';
+import SudokuBoardState from './state.js';
+import InputDispatcher from '../../core/input-dispatcher.js';
 
 export default class SudokuScene {
-  constructor(host) {
+  constructor(host, options = {}) {
     this.host = host;
     this.theme = host.theme;
-    this.board = cloneGrid(PUZZLE);
-    this.mistakeMap = PUZZLE.map((row) => row.map(() => false));
-    this.fixed = PUZZLE.map((row) => row.map((value) => value !== 0));
+    
+    let initialPuzzle, solution;
+    if (options.holes) {
+      const generated = generateSudoku(options.holes);
+      initialPuzzle = generated.puzzle;
+      solution = generated.solution;
+    } else {
+      initialPuzzle = PUZZLE;
+      solution = SOLUTION;
+    }
+    
+    this.state = new SudokuBoardState(initialPuzzle, solution);
     this.selected = { row: 0, col: 2 };
-    this.mistakes = 0;
-    this.completed = false;
-    this.saved = false;
-    this.startTime = Date.now();
     this.buttons = [];
     this.pressedKey = 0;
     this.keyPressTimer = null;
+    this.input = new InputDispatcher();
   }
 
   init() {
@@ -54,53 +58,60 @@ export default class SudokuScene {
       variant: 'ghost',
       onClick: () => this.reset(),
     });
-    this.buttons = [this.backButton, this.resetButton];
+    this.undoButton = new Button({
+      x: width / 2 - 80,
+      y: 34,
+      w: 74,
+      h: 36,
+      label: '撤销',
+      variant: 'ghost',
+      onClick: () => {
+        if (this.state.undo()) {
+          // 这里可以额外做一些撤销后的UI反馈
+        }
+      },
+    });
+    this.eraseButton = new Button({
+      x: width / 2 + 6,
+      y: 34,
+      w: 74,
+      h: 36,
+      label: '擦除',
+      variant: 'ghost',
+      onClick: () => this.state.erase(this.selected.row, this.selected.col),
+    });
+    this.noteButton = new Button({
+      x: width / 2 - 37,
+      y: this.keyY - 44,
+      w: 74,
+      h: 32,
+      label: '笔记',
+      variant: 'ghost',
+      onClick: () => {
+        const isNote = this.state.toggleNoteMode();
+        this.noteButton.label = isNote ? '笔记: 开' : '笔记';
+        this.noteButton.variant = isNote ? 'secondary' : 'ghost';
+      },
+    });
+    
+    this.buttons = [this.backButton, this.undoButton, this.eraseButton, this.resetButton, this.noteButton];
+    this.buttons.forEach(btn => this.input.add(btn));
   }
 
   reset() {
-    this.board = cloneGrid(PUZZLE);
-    this.mistakeMap = PUZZLE.map((row) => row.map(() => false));
-    this.mistakes = 0;
-    this.completed = false;
-    this.saved = false;
-    this.startTime = Date.now();
+    this.state = new SudokuBoardState(this.state.initialPuzzle, this.state.solution);
     this.selected = { row: 0, col: 2 };
     this.pressedKey = 0;
+    this.noteButton.label = '笔记';
+    this.noteButton.variant = 'ghost';
   }
 
   update() {
-    if (!this.completed && this.isSolved()) {
-      this.completed = true;
-      this.saveResult();
+    if (!this.state.completed && this.state.isBoardFull() && this.state.isSolved()) {
+      this.state.completed = true;
+      this.state.saveResult();
+      this.host.effects.confetti.fire(this.host.width / 2, this.host.height / 2);
     }
-  }
-
-  getElapsed() {
-    return Math.floor((Date.now() - this.startTime) / 1000);
-  }
-
-  saveResult() {
-    if (this.saved) return;
-    const time = this.getElapsed();
-    const score = Math.max(100, 1000 - time * 2 - this.mistakes * 80);
-    saveScore('sudoku', {
-      score,
-      time,
-      mistakes: this.mistakes,
-      difficulty: 'easy',
-    });
-    this.saved = true;
-  }
-
-  isSolved() {
-    for (let row = 0; row < 9; row++) {
-      for (let col = 0; col < 9; col++) {
-        if (this.board[row][col] !== SOLUTION[row][col]) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   render(ctx) {
@@ -114,11 +125,14 @@ export default class SudokuScene {
     ctx.globalAlpha = reveal;
     ctx.translate(0, (1 - reveal) * 10);
     this.backButton.render(ctx, theme);
+    this.undoButton.render(ctx, theme);
+    this.eraseButton.render(ctx, theme);
     this.resetButton.render(ctx, theme);
+    this.noteButton.render(ctx, theme);
     this.renderHeader(ctx);
     this.renderBoard(ctx);
     this.renderNumberPad(ctx);
-    if (this.completed) {
+    if (this.state.completed) {
       this.renderComplete(ctx);
     }
     ctx.restore();
@@ -134,7 +148,7 @@ export default class SudokuScene {
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `用时 ${this.getElapsed()}s · 错误 ${this.mistakes}`, this.host.width / 2, 102, {
+    drawText(ctx, `用时 ${this.state.getTimeSpent()}s · 累计错误 ${this.state.mistakes}`, this.host.width / 2, 102, {
       size: 13,
       color: theme.color.muted,
       align: 'center',
@@ -151,17 +165,17 @@ export default class SudokuScene {
     fillRoundRect(ctx, x - 8, y - 8, this.boardSize + 16, this.boardSize + 16, 18, theme.color.paper);
     strokeRoundRect(ctx, x - 8, y - 8, this.boardSize + 16, this.boardSize + 16, 18, theme.color.line, 1);
 
-    const selectedValue = this.board[this.selected.row][this.selected.col];
+    const selectedValue = this.state.board[this.selected.row][this.selected.col];
     for (let row = 0; row < 9; row++) {
       for (let col = 0; col < 9; col++) {
         const cellX = x + col * this.cell;
         const cellY = y + row * this.cell;
-        const value = this.board[row][col];
+        const value = this.state.board[row][col];
         const sameValue = selectedValue && value === selectedValue;
         if (row === this.selected.row && col === this.selected.col) {
           ctx.fillStyle = '#e7ddce';
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
-        } else if (this.mistakeMap[row][col]) {
+        } else if (this.state.mistakeMap[row][col]) {
           ctx.fillStyle = '#f6dfdb';
           ctx.fillRect(cellX, cellY, this.cell, this.cell);
         } else if (sameValue) {
@@ -175,8 +189,21 @@ export default class SudokuScene {
             align: 'center',
             baseline: 'middle',
             font: theme.font.body,
-            weight: this.fixed[row][col] ? '600' : '500',
+            weight: this.state.fixed[row][col] ? '600' : '500',
           });
+        } else if (this.state.board[row][col] === 0 && this.state.notesMap[row][col] && this.state.notesMap[row][col].length > 0) {
+          const notes = this.state.notesMap[row][col];
+          for (let note of notes) {
+            const nx = cellX + ((note - 1) % 3) * (this.cell / 3) + this.cell / 6;
+            const ny = cellY + Math.floor((note - 1) / 3) * (this.cell / 3) + this.cell / 6;
+            drawText(ctx, String(note), nx, ny, {
+              size: 10,
+              color: theme.color.muted,
+              align: 'center',
+              baseline: 'middle',
+              font: theme.font.body,
+            });
+          }
         }
       }
     }
@@ -248,7 +275,7 @@ export default class SudokuScene {
       font: theme.font.title,
       weight: '600',
     });
-    drawText(ctx, `得分 ${Math.max(100, 1000 - this.getElapsed() * 2 - this.mistakes * 80)} · 已保存到本地`, this.host.width / 2, y + 56, {
+    drawText(ctx, `得分 ${this.state.getScore()} · 已保存到本地`, this.host.width / 2, y + 56, {
       size: 13,
       color: '#e8e2d9',
       align: 'center',
@@ -258,11 +285,7 @@ export default class SudokuScene {
   }
 
   onTouchStart(point) {
-    const button = this.buttons.find((item) => item.hit(point.x, point.y));
-    if (button) {
-      button.press();
-      return;
-    }
+    if (this.input.onTouchStart(point.x, point.y)) return;
 
     if (contains({ x: this.boardX, y: this.boardY, w: this.boardSize, h: this.boardSize }, point.x, point.y)) {
       this.selected = {
@@ -275,26 +298,24 @@ export default class SudokuScene {
     this.handleNumberPad(point);
   }
 
-  destroy() {
-    this.buttons.forEach((button) => button.destroy && button.destroy());
+  onTouchMove(point) {
+    this.input.onTouchMove(point.x, point.y);
+  }
+
+  onTouchEnd(point) {
+    this.input.onTouchEnd(point.x, point.y);
   }
 
   handleNumberPad(point) {
-    if (this.completed) return;
+    if (this.state.completed) return;
     const layout = this.getKeypadLayout();
     for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
       for (let colIndex = 0; colIndex < 3; colIndex++) {
         const i = rowIndex * 3 + colIndex + 1;
         const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
         if (contains(rect, point.x, point.y)) {
-          const { row, col } = this.selected;
-          if (this.fixed[row][col]) return;
           this.pressKey(i);
-          this.board[row][col] = i;
-          this.mistakeMap[row][col] = SOLUTION[row][col] !== i;
-          if (this.mistakeMap[row][col]) {
-            this.mistakes++;
-          }
+          this.state.fillNumber(this.selected.row, this.selected.col, i);
           return;
         }
       }
@@ -302,21 +323,15 @@ export default class SudokuScene {
   }
 
   getCellColor(row, col) {
-    if (this.fixed[row][col]) {
-      return this.theme.color.ink;
-    }
-    if (this.mistakeMap[row][col]) {
-      return this.theme.color.danger;
-    }
+    if (this.state.fixed[row][col]) return this.theme.color.ink;
+    if (this.state.mistakeMap[row][col]) return this.theme.color.danger;
     return this.theme.color.accent;
   }
 
   pressKey(value) {
     if (this.keyPressTimer) {
       clearTimeout(this.keyPressTimer);
-      this.keyPressTimer = null;
     }
-
     this.pressedKey = value;
     this.keyPressTimer = setTimeout(() => {
       this.pressedKey = 0;

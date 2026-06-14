@@ -1,6 +1,9 @@
 import Button from '../ui/button.js';
+import ConfigModal from '../ui/config-modal.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../ui/canvas.js';
 import { getScores } from '../core/storage.js';
+import { GAMES } from '../games/registry.js';
+import InputDispatcher from '../core/input-dispatcher.js';
 
 export default class MenuScene {
   constructor(host) {
@@ -8,6 +11,8 @@ export default class MenuScene {
     this.theme = host.theme;
     this.cards = [];
     this.scores = getScores();
+    this.modal = null;
+    this.input = new InputDispatcher();
   }
 
   init() {
@@ -17,38 +22,49 @@ export default class MenuScene {
     const gap = 18;
     const cardH = 128;
 
-    this.cards = [
-      new Button({
+    this.cards = GAMES.map((game, index) => {
+      const scoreData = this.scores[game.id];
+      const btn = new Button({
         x: margin,
-        y: top,
+        y: top + index * (cardH + gap),
         w: cardW,
         h: cardH,
-        label: '数独',
-        detail: this.formatSudokuScore(),
+        label: game.name,
+        detail: game.formatScore(scoreData),
         variant: 'secondary',
-        onClick: () => this.host.startGame('sudoku'),
-      }),
-      new Button({
-        x: margin,
-        y: top + cardH + gap,
-        w: cardW,
-        h: cardH,
-        label: '华容道',
-        detail: this.formatHuarongdaoScore(),
-        variant: 'secondary',
-        onClick: () => this.host.startGame('huarongdao'),
-      }),
-    ];
+        onClick: () => this.showGameConfig(game),
+      });
+      this.input.add(btn);
+      return btn;
+    });
   }
 
-  formatSudokuScore() {
-    const score = this.scores.sudoku || {};
-    return score.bestScore ? `最佳 ${score.bestScore} 分 · ${score.bestTime}s` : '九宫格推理 · 简单难度';
+  showGameConfig(game) {
+    if (!game.configOptions || game.configOptions.length === 0) {
+      this.host.startGame(game.id);
+      return;
+    }
+    
+    this.modal = new ConfigModal({
+      host: this.host,
+      title: game.configTitle || `${game.name} 配置`,
+      options: game.configOptions,
+      onConfirm: (val) => {
+        const options = val || {};
+        this.host.startGame(game.id, options);
+        this.closeModal();
+      },
+      onCancel: () => this.closeModal()
+    });
+    this.input.add(this.modal);
   }
 
-  formatHuarongdaoScore() {
-    const score = this.scores.huarongdao || {};
-    return score.bestScore ? `最佳 ${score.bestScore} 分 · ${score.bestSteps} 步` : '经典横刀立马 · 简单关卡';
+  closeModal() {
+    if (this.modal) {
+      this.input.remove(this.modal);
+      this.modal.destroy();
+      this.modal = null;
+    }
   }
 
   render(ctx) {
@@ -92,6 +108,10 @@ export default class MenuScene {
       baseline: 'middle',
       font: theme.font.body,
     });
+
+    if (this.modal) {
+      this.modal.render(ctx, theme);
+    }
   }
 
   renderBackdrop(ctx) {
@@ -119,7 +139,8 @@ export default class MenuScene {
 
   renderGameCard(ctx, card, index) {
     const theme = this.theme;
-    const accent = index === 0 ? theme.color.sage : theme.color.blue;
+    const game = GAMES[index];
+    const accent = game.themeColor || theme.color.sage;
     const reveal = Math.min(1, Math.max(0, (this.host.sceneAge - index * 90) / 380));
     const iconX = card.x + card.w - 68;
     const iconY = card.y + 34;
@@ -142,7 +163,7 @@ export default class MenuScene {
     ctx.fillRect(card.x, card.y + 18, 4, card.h - 36);
     ctx.globalAlpha = reveal;
 
-    drawText(ctx, index === 0 ? '01' : '02', card.x + 28, card.y + 32, {
+    drawText(ctx, String(index + 1).padStart(2, '0'), card.x + 28, card.y + 32, {
       size: 13,
       color: theme.color.gold,
       align: 'left',
@@ -168,7 +189,7 @@ export default class MenuScene {
       font: theme.font.body,
     });
 
-    this.renderCardMark(ctx, index, iconX, iconY, accent);
+    this.renderCardMark(ctx, game, iconX, iconY, accent);
 
     ctx.strokeStyle = accent;
     ctx.lineWidth = 1.4;
@@ -182,44 +203,31 @@ export default class MenuScene {
     ctx.restore();
   }
 
-  renderCardMark(ctx, index, x, y, accent) {
+  renderCardMark(ctx, game, x, y, accent) {
     ctx.save();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.2;
-    ctx.globalAlpha *= 0.55;
-    if (index === 0) {
-      const size = 36;
-      strokeRoundRect(ctx, x, y, size, size, 3, accent, 1);
-      ctx.beginPath();
-      ctx.moveTo(x + size / 3, y);
-      ctx.lineTo(x + size / 3, y + size);
-      ctx.moveTo(x + (size * 2) / 3, y);
-      ctx.lineTo(x + (size * 2) / 3, y + size);
-      ctx.moveTo(x, y + size / 3);
-      ctx.lineTo(x + size, y + size / 3);
-      ctx.moveTo(x, y + (size * 2) / 3);
-      ctx.lineTo(x + size, y + (size * 2) / 3);
-      ctx.stroke();
-    } else {
-      const blocks = [
-        [0, 0, 2, 2],
-        [2.3, 0, 1, 2],
-        [0, 2.3, 1, 1],
-        [1.2, 2.3, 2.1, 1],
-      ];
-      blocks.forEach((item) => {
-        const unit = 10;
-        strokeRoundRect(ctx, x + item[0] * unit, y + item[1] * unit, item[2] * unit, item[3] * unit, 4, accent, 1);
-      });
-    }
+    ctx.globalAlpha *= 0.8;
+    fillRoundRect(ctx, x, y, 36, 36, 8, accent);
+    drawText(ctx, game.iconText || '游', x + 18, y + 18 + 1, {
+      size: 20,
+      color: '#fff',
+      align: 'center',
+      baseline: 'middle',
+      font: this.theme.font.body,
+      weight: '600'
+    });
     ctx.restore();
   }
 
   onTouchStart(point) {
-    const card = this.cards.find((item) => item.hit(point.x, point.y));
-    if (card) {
-      card.press();
-    }
+    this.input.onTouchStart(point.x, point.y);
+  }
+
+  onTouchMove(point) {
+    this.input.onTouchMove(point.x, point.y);
+  }
+
+  onTouchEnd(point) {
+    this.input.onTouchEnd(point.x, point.y);
   }
 
   destroy() {
