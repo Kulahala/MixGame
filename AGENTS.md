@@ -44,9 +44,27 @@ No automated test framework is configured. Validate changes in WeChat Developer 
 
 If tests are added later, place them in a clearly named `test/` or `__tests__/` directory and document the command here.
 
-## Commit & Pull Request Guidelines
+## Commit Message Policy
 
-This directory has no Git history, so no historical convention can be inferred. Use short, imperative commit messages, for example `Fix bullet collision cleanup` or `Add enemy spawn tuning`.
+提交信息应清晰、贴合当前仓库风格。
+
+- 如果仓库已有明确提交格式，优先遵循仓库格式。
+- 如果仓库没有格式，默认使用中英双语标题：
+  - `[Feature] 中文标题（English Title）`
+  - `[Fix] 中文标题（English Title）`
+  - `[Docs] 中文标题（English Title）`
+  - `[Refactor] 中文标题（English Title）`
+  - `[Test] 中文标题（English Title）`
+  - `[Chore] 中文标题（English Title）`
+- 中文标题说明实际变化，英文标题保持简洁自然，不要逐字硬翻。
+- 标题不要太长；复杂信息放到正文。
+- 非复杂改动不需要长正文。
+- 复杂改动正文说明：改了什么、为什么改、是否有迁移/兼容/验证事项。
+- 不要声称已测试、已构建、已部署、已打包或已人工验证，除非确实执行过或用户明确确认。
+- 不要堆砌 diff 里一眼能看出的低价值细节。
+- 每次提交前检查 README、AGENTS 或其他项目文档是否需要随代码变化同步更新。
+
+## Pull Request Guidelines
 
 Pull requests should include a behavior summary, affected files, verification notes, and screenshots for visible gameplay or UI changes.
 
