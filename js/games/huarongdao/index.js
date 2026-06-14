@@ -24,6 +24,12 @@ export default class HuarongdaoScene {
     this.boardX = (width - this.boardSize) / 2;
     this.boardY = 164;
     
+    // 初始化所有方块渲染偏移量
+    this.tileOffsets = {};
+    for (let i = 1; i < this.state.size * this.state.size; i++) {
+      this.tileOffsets[i] = { offsetX: 0, offsetY: 0 };
+    }
+
     this.setupButtons();
   }
 
@@ -57,9 +63,48 @@ export default class HuarongdaoScene {
       this.input.remove(this.modal);
       this.modal = null;
     }
+    // 重置所有偏移量
+    this.tileOffsets = {};
+    for (let i = 1; i < this.state.size * this.state.size; i++) {
+      this.tileOffsets[i] = { offsetX: 0, offsetY: 0 };
+    }
   }
 
-  update() {
+  getTilePositions() {
+    const positions = {};
+    for (let r = 0; r < this.state.size; r++) {
+      for (let c = 0; c < this.state.size; c++) {
+        const val = this.state.grid[r][c];
+        if (val !== 0) {
+          positions[val] = { r, c };
+        }
+      }
+    }
+    return positions;
+  }
+
+  moveTile(r, c) {
+    const oldPos = this.getTilePositions();
+    const moved = this.state.tryMoveGrid(r, c);
+    if (moved) {
+      const newPos = this.getTilePositions();
+      for (let val in newPos) {
+        const oldP = oldPos[val];
+        const newP = newPos[val];
+        if (oldP && (oldP.r !== newP.r || oldP.c !== newP.c)) {
+          const diffC = oldP.c - newP.c;
+          const diffR = oldP.r - newP.r;
+          this.tileOffsets[val] = {
+            offsetX: diffC * this.cell,
+            offsetY: diffR * this.cell
+          };
+        }
+      }
+    }
+    return moved;
+  }
+
+  update(dt = 16) {
     if (!this.state.completed && this.state.isSolved()) {
       this.state.completed = true;
       this.state.saveResult();
@@ -76,6 +121,31 @@ export default class HuarongdaoScene {
         onRestart: () => this.reset()
       });
       this.input.add(this.modal);
+    }
+
+    // 每一帧平滑地更新方块渲染偏移量，向 0 逼近
+    // 在 130ms 内完成一个 cell 宽度的移动
+    const speed = this.cell / 130; // 像素/毫秒
+    for (let val in this.tileOffsets) {
+      const offset = this.tileOffsets[val];
+      if (offset.offsetX !== 0) {
+        const dir = offset.offsetX > 0 ? -1 : 1;
+        const step = dir * speed * dt;
+        if (Math.abs(step) >= Math.abs(offset.offsetX)) {
+          offset.offsetX = 0;
+        } else {
+          offset.offsetX += step;
+        }
+      }
+      if (offset.offsetY !== 0) {
+        const dir = offset.offsetY > 0 ? -1 : 1;
+        const step = dir * speed * dt;
+        if (Math.abs(step) >= Math.abs(offset.offsetY)) {
+          offset.offsetY = 0;
+        } else {
+          offset.offsetY += step;
+        }
+      }
     }
   }
 
@@ -133,8 +203,9 @@ export default class HuarongdaoScene {
         const val = this.state.grid[r][c];
         if (val === 0) continue;
         
-        const cellX = x + c * this.cell + padding;
-        const cellY = y + r * this.cell + padding;
+        const offset = this.tileOffsets[val] || { offsetX: 0, offsetY: 0 };
+        const cellX = x + c * this.cell + padding + offset.offsetX;
+        const cellY = y + r * this.cell + padding + offset.offsetY;
 
         const isCorrect = val === r * this.state.size + c + 1;
         const bg = isCorrect ? theme.color.sage : theme.color.ink;
@@ -179,19 +250,19 @@ export default class HuarongdaoScene {
       const dist = Math.sqrt(dx*dx + dy*dy);
       if (dist < 10) {
         // Click
-        this.state.tryMoveGrid(this.touchStartGrid.r, this.touchStartGrid.c);
+        this.moveTile(this.touchStartGrid.r, this.touchStartGrid.c);
       } else {
         // Swipe
         const tr = this.touchStartGrid.r;
         const tc = this.touchStartGrid.c;
         if (Math.abs(dx) > Math.abs(dy)) {
           // Horizontal swipe
-          if (dx > 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c > tc) this.state.tryMoveGrid(tr, tc);
-          if (dx < 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c < tc) this.state.tryMoveGrid(tr, tc);
+          if (dx > 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c > tc) this.moveTile(tr, tc);
+          if (dx < 0 && this.state.emptyPos.r === tr && this.state.emptyPos.c < tc) this.moveTile(tr, tc);
         } else {
           // Vertical swipe
-          if (dy > 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r > tr) this.state.tryMoveGrid(tr, tc);
-          if (dy < 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r < tr) this.state.tryMoveGrid(tr, tc);
+          if (dy > 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r > tr) this.moveTile(tr, tc);
+          if (dy < 0 && this.state.emptyPos.c === tc && this.state.emptyPos.r < tr) this.moveTile(tr, tc);
         }
       }
     }

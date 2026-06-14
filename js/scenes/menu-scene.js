@@ -59,11 +59,21 @@ export default class MenuScene {
     this.input.add(this.modal);
   }
 
-  closeModal() {
+  closeModal(onClosed) {
     if (this.modal) {
-      this.input.remove(this.modal);
-      this.modal.destroy();
-      this.modal = null;
+      if (this.modal.close) {
+        this.modal.close(() => {
+          this.input.remove(this.modal);
+          this.modal.destroy();
+          this.modal = null;
+          if (onClosed) onClosed();
+        });
+      } else {
+        this.input.remove(this.modal);
+        this.modal.destroy();
+        this.modal = null;
+        if (onClosed) onClosed();
+      }
     }
   }
 
@@ -232,5 +242,10 @@ export default class MenuScene {
 
   destroy() {
     this.cards.forEach((card) => card.destroy && card.destroy());
+    if (this.modal) {
+      this.input.remove(this.modal);
+      this.modal.destroy();
+      this.modal = null;
+    }
   }
 }

@@ -401,7 +401,9 @@ export default class SudokuScene {
   destroy() {
     this.buttons.forEach((button) => button.destroy && button.destroy());
     if (this.modal) {
+      this.input.remove(this.modal);
       this.modal.destroy();
+      this.modal = null;
     }
     if (this.keyPressTimer) {
       clearTimeout(this.keyPressTimer);

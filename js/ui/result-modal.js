@@ -10,6 +10,16 @@ export default class ResultModal {
     this.onMenu = options.onMenu || function() {};
     
     this.buttons = [];
+
+    // Animation States
+    this.scale = 0.82;
+    this.alpha = 0;
+    this.animTime = 0;
+    this.animDuration = 220; // ms
+    this.isClosing = false;
+    this.closeCallback = null;
+    this.lastRenderTime = 0;
+
     this.init();
   }
 
@@ -53,8 +63,39 @@ export default class ResultModal {
   }
 
   render(ctx, theme) {
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    const now = Date.now();
+    const dt = this.lastRenderTime ? Math.min(50, now - this.lastRenderTime) : 16;
+    this.lastRenderTime = now;
+
+    if (this.isClosing) {
+      this.animTime = Math.max(0, this.animTime - dt);
+      const progress = this.animTime / this.animDuration;
+      this.alpha = progress;
+      this.scale = 0.82 + 0.18 * progress;
+      if (this.animTime === 0 && this.closeCallback) {
+        const cb = this.closeCallback;
+        this.closeCallback = null;
+        cb();
+      }
+    } else {
+      if (this.animTime < this.animDuration) {
+        this.animTime = Math.min(this.animDuration, this.animTime + dt);
+        const progress = this.animTime / this.animDuration;
+        const ease = progress * (2 - progress); // ease-out quad
+        this.alpha = ease;
+        this.scale = 0.82 + 0.18 * ease;
+      }
+    }
+
+    ctx.fillStyle = `rgba(0, 0, 0, ${0.45 * this.alpha})`;
     ctx.fillRect(0, 0, this.host.width, this.host.height);
+
+    ctx.save();
+    const centerX = this.x + this.w / 2;
+    const centerY = this.y + this.h / 2;
+    ctx.translate(centerX, centerY);
+    ctx.scale(this.scale, this.scale);
+    ctx.translate(-centerX, -centerY);
 
     fillRoundRect(ctx, this.x, this.y, this.w, this.h, theme.radius.lg, theme.color.paper);
     strokeRoundRect(ctx, this.x, this.y, this.w, this.h, theme.radius.lg, theme.color.line, 1);
@@ -79,9 +120,14 @@ export default class ResultModal {
     });
 
     this.buttons.forEach(btn => btn.render(ctx, theme));
+    ctx.restore();
   }
 
   onTouchStart(x, y) {
+    if (this.alpha < 0.9 || this.isClosing) {
+      return true;
+    }
+
     let hitBtn = false;
     this.buttons.forEach(btn => {
       if (btn.onTouchStart(x, y)) hitBtn = true;
@@ -91,11 +137,23 @@ export default class ResultModal {
   }
 
   onTouchMove(x, y) {
+    if (this.alpha < 0.9 || this.isClosing) {
+      return true;
+    }
     this.buttons.forEach(btn => btn.onTouchMove(x, y));
   }
 
   onTouchEnd(x, y) {
+    if (this.alpha < 0.9 || this.isClosing) {
+      return true;
+    }
     this.buttons.forEach(btn => btn.onTouchEnd(x, y));
+  }
+
+  close(callback) {
+    this.isClosing = true;
+    this.closeCallback = callback;
+    this.animTime = this.animDuration;
   }
 
   destroy() {
