@@ -1,4 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
+import { getHistory } from '../../core/storage.js';
 import Button from '../../ui/button.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import { PUZZLE, SOLUTION } from './puzzle.js';
@@ -101,10 +102,15 @@ export default class SudokuScene extends BaseGameScene {
       if (this.state.isSolved()) {
         this.state.completed = true;
         this.state.saveResult();
+        const currentScore = this.state.getScore();
+        const history = getHistory('sudoku').map((h) => ({
+          label: `${h.score}分 · ${h.time}s`,
+          highlight: h.score === currentScore,
+        }));
         this.showResult('恭喜通关！', [
           `用时：${this.state.getTimeSpent()}s`,
           `累计填写：${this.state.fills}次`
-        ], true);
+        ], true, history);
       } else {
         if (this.state.checkMistakes()) {
           if (typeof wx !== 'undefined' && wx.vibrateShort) {

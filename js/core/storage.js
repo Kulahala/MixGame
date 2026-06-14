@@ -6,30 +6,35 @@ const DEFAULT_SCORES = {
     bestTime: 0,
     bestMistakes: 0,
     plays: 0,
+    history: [],
   },
   huarongdao: {
     bestScore: 0,
     bestSteps: 0,
     bestTime: 0,
     plays: 0,
+    history: [],
   },
   minesweeper: {
     bestScore: 0,
     bestTime: 0,
     bestSteps: 0,
     plays: 0,
+    history: [],
   },
   game2048: {
     bestScore: 0,
     bestTime: 0,
     bestSteps: 0,
     plays: 0,
+    history: [],
   },
   memory: {
     bestScore: 0,
     bestTime: 0,
     bestSteps: 0,
     plays: 0,
+    history: [],
   },
 };
 
@@ -67,6 +72,20 @@ export function saveScore(gameId, result) {
     next.bestLevelId = result.levelId || '';
   }
 
+  // ── History (最多 3 条，按 score 降序) ───────────────
+  const history = (current.history || []).slice();
+  if (result.won !== false) {
+    const entry = {};
+    for (const key of ['score', 'time', 'steps', 'mistakes', 'difficulty']) {
+      if (result[key] !== undefined) entry[key] = result[key];
+    }
+    history.push(entry);
+    history.sort((a, b) => (b.score || 0) - (a.score || 0));
+    next.history = history.slice(0, 3);
+  } else {
+    next.history = history;
+  }
+
   scores[gameId] = next;
 
   try {
@@ -76,4 +95,11 @@ export function saveScore(gameId, result) {
   }
 
   return scores;
+}
+
+export function getHistory(gameId) {
+  const scores = getScores();
+  const current = scores[gameId];
+  if (!current || !Array.isArray(current.history)) return [];
+  return current.history.slice(0, 3);
 }

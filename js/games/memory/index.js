@@ -1,4 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
+import { getHistory } from '../../core/storage.js';
 import MemoryState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect, contains } from '../../ui/canvas.js';
 
@@ -97,6 +98,11 @@ export default class MemoryScene extends BaseGameScene {
         this.completedTimer = -1;
         this.state.saveResult();
         const time = this.state.getElapsed();
+        const currentScore = Math.max(100, 1000 - time * 3 - this.state.steps * 5);
+        const history = getHistory('memory').map((h) => ({
+          label: `${h.time}s · ${h.steps}步`,
+          highlight: h.score === currentScore,
+        }));
         this.showResult(
           '恭喜通关！',
           [
@@ -104,7 +110,8 @@ export default class MemoryScene extends BaseGameScene {
             `步数：${this.state.steps} 步`,
             `难度：${this.state.rows}×${this.state.cols}`,
           ],
-          true
+          true,
+          history
         );
       }
     }

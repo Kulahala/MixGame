@@ -177,6 +177,7 @@ export default class Game2048State {
       time,
       steps: this.steps,
       difficulty: `目标${this.target}`,
+      won: this.won,
     });
     this.saved = true;
   }

@@ -87,8 +87,9 @@ export default class BaseGameScene {
    * @param {string} title — 弹窗标题
    * @param {Array}  stats — 统计项 [{label, value}]
    * @param {boolean} isWin — 是否胜利
+   * @param {Array}  history — 历史最佳记录 [{label, highlight}]
    */
-  showResult(title, stats, isWin = true) {
+  showResult(title, stats, isWin = true, history = []) {
     // 防止重复调用
     if (this.modal) return;
 
@@ -100,6 +101,7 @@ export default class BaseGameScene {
       host: this.host,
       title: title,
       stats: stats,
+      history: history,
       onMenu: () => {
         this.modal.close(() => {
           this.exit(() => this.host.showMenu());

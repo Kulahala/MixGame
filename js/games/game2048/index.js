@@ -1,4 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
+import { getHistory } from '../../core/storage.js';
 import Game2048State from './state.js';
 import { contains, drawText, fillRoundRect } from '../../ui/canvas.js';
 
@@ -62,6 +63,10 @@ export default class Game2048Scene extends BaseGameScene {
       this.state.saveResult();
 
       if (this.state.won) {
+        const history = getHistory('game2048').map((h) => ({
+          label: `${h.score}分 · ${h.steps}步`,
+          highlight: h.score === this.state.score,
+        }));
         this.showResult(
           `达到 ${this.state.target}！`,
           [
@@ -70,6 +75,7 @@ export default class Game2048Scene extends BaseGameScene {
             `用时：${this.state.getElapsed()}s`,
           ],
           true,
+          history,
         );
       } else {
         this.showResult(

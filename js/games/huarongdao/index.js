@@ -1,4 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
+import { getHistory } from '../../core/storage.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import HuarongdaoState from './state.js';
 
@@ -78,10 +79,15 @@ export default class HuarongdaoScene extends BaseGameScene {
     if (!this.state.completed && this.state.isSolved()) {
       this.state.completed = true;
       this.state.saveResult();
+      const currentScore = Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps * 10);
+      const history = getHistory('huarongdao').map((h) => ({
+        label: `${h.steps}步 · ${h.time}s`,
+        highlight: h.score === currentScore,
+      }));
       this.showResult('恭喜通关！', [
         `用时：${this.state.getElapsed()}s`,
         `总步数：${this.state.steps}步`
-      ], true);
+      ], true, history);
     }
 
     // 每一帧平滑地更新方块渲染动画偏移量

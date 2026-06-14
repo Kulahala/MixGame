@@ -6,6 +6,7 @@ export default class ResultModal {
     this.host = options.host;
     this.title = options.title || '通关！';
     this.stats = options.stats || []; // 格式：['用时：30s', '步数：120步']
+    this.history = options.history || [];
     this.onRestart = options.onRestart || function() {};
     this.onMenu = options.onMenu || function() {};
     
@@ -34,7 +35,12 @@ export default class ResultModal {
     const statH = 28;
     const statsTotalH = this.stats.length * statH;
 
-    this.h = headerH + statsTotalH + padding + btnH + padding;
+    let historyExtraH = 0;
+    if (this.history.length > 0) {
+      historyExtraH = 16 + 20 + this.history.length * 24 + 8;
+    }
+
+    this.h = headerH + statsTotalH + padding + btnH + padding + historyExtraH;
     
     this.x = (width - this.w) / 2;
     this.y = (height - this.h) / 2 - 20;
@@ -123,6 +129,45 @@ export default class ResultModal {
         font: theme.font.body
       });
     });
+
+    // ── History section ──────────────────────────────
+    if (this.history.length > 0) {
+      const statsEndY = this.y + 70 + this.stats.length * 28;
+      let historyY = statsEndY;
+
+      // Divider
+      historyY += 8;
+      ctx.strokeStyle = theme.color.line;
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(this.x + 24, historyY);
+      ctx.lineTo(this.x + this.w - 24, historyY);
+      ctx.stroke();
+
+      // Title
+      historyY += 8;
+      drawText(ctx, '历史最佳', this.x + this.w / 2, historyY + 10, {
+        size: 13,
+        color: theme.color.muted,
+        align: 'center',
+        baseline: 'middle',
+        font: theme.font.body,
+      });
+
+      // History entries
+      historyY += 20;
+      this.history.forEach((entry) => {
+        drawText(ctx, entry.label, this.x + this.w / 2, historyY + 12, {
+          size: 14,
+          color: entry.highlight ? theme.color.gold : theme.color.ink,
+          align: 'center',
+          baseline: 'middle',
+          font: theme.font.body,
+          weight: entry.highlight ? '600' : undefined,
+        });
+        historyY += 24;
+      });
+    }
 
     this.buttons.forEach(btn => btn.render(ctx, theme));
     ctx.restore();

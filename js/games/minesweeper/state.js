@@ -153,6 +153,7 @@ export default class MinesweeperState {
       time,
       steps: this.steps,
       difficulty: `${this.rows}x${this.cols}`,
+      won: this.won,
     });
     this.saved = true;
   }

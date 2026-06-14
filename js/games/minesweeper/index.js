@@ -1,4 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
+import { getHistory } from '../../core/storage.js';
 import Button from '../../ui/button.js';
 import MinesweeperState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
@@ -76,11 +77,16 @@ export default class MinesweeperScene extends BaseGameScene {
     if (this.state.completed && !this.resultShown) {
       this.resultShown = true;
       if (this.state.won) {
+        const currentScore = this.state.won ? Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps) : 0;
+        const history = getHistory('minesweeper').map((h) => ({
+          label: `${h.score}分 · ${h.time}s`,
+          highlight: h.score === currentScore,
+        }));
         this.showResult('恭喜通关！', [
           `用时 ${this.state.getElapsed()}s`,
           `步数 ${this.state.steps} 步`,
           `剩余雷数 ${this.state.totalMines - this.state.getFlagCount()}`,
-        ], true);
+        ], true, history);
       } else {
         this.showResult('踩雷了！', [
           `用时 ${this.state.getElapsed()}s`,
