@@ -2,6 +2,7 @@ import BaseGameScene from '../../core/game-scene-base.js';
 import { getHistory } from '../../core/storage.js';
 import Game2048State from './state.js';
 import { contains, drawText, fillRoundRect } from '../../ui/canvas.js';
+import { getRandomQuote } from '../../ui/quotes.js';
 
 // ── Tile colour palette ────────────────────────────────
 const TILE_COLORS = {
@@ -32,6 +33,7 @@ export default class Game2048Scene extends BaseGameScene {
     this.state = new Game2048State(options.target || 2048);
     this.touchStartPoint = null;
     this.gap = 8;
+    this.bottomQuote = getRandomQuote('game2048');
   }
 
   // ── Layout ───────────────────────────────────────────
@@ -59,6 +61,7 @@ export default class Game2048Scene extends BaseGameScene {
     this.closeModal();
     this.state.init();
     this.touchStartPoint = null;
+    this.bottomQuote = getRandomQuote('game2048');
   }
 
   update(dt) {
@@ -154,7 +157,7 @@ export default class Game2048Scene extends BaseGameScene {
     }
 
     // ── Bottom hint ─────────────────────────────────
-    drawText(ctx, '滑动屏幕合并数字方块', this.host.width / 2, this.gridY + this.gridSize + 28, {
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.gridY + this.gridSize + 28, {
       size: 13,
       color: theme.color.faint,
       align: 'center',

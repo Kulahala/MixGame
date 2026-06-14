@@ -2,6 +2,9 @@ import BaseGameScene from '../../core/game-scene-base.js';
 import { getHistory } from '../../core/storage.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import HuarongdaoState from './state.js';
+import InputDispatcher from '../../core/input-dispatcher.js';
+import { getRandomQuote } from '../../ui/quotes.js';
+import Button from '../../ui/button.js';
 
 export default class HuarongdaoScene extends BaseGameScene {
   constructor(host, options = {}) {
@@ -9,8 +12,23 @@ export default class HuarongdaoScene extends BaseGameScene {
 
     this.state = new HuarongdaoState(options.size || 4);
 
+    this.buttons = [];
     this.touchStartPoint = null;
     this.touchStartGrid = null;
+    this.input = new InputDispatcher();
+    this.bottomQuote = getRandomQuote('huarongdao');
+
+    // Exit Animation States
+    this.isExiting = false;
+    this.exitTime = 0;
+    this.exitDuration = 200; // ms
+    this.exitCallback = null;
+  }
+
+  exit(callback) {
+    this.isExiting = true;
+    this.exitTime = 0;
+    this.exitCallback = callback;
   }
 
   init() {
@@ -27,14 +45,42 @@ export default class HuarongdaoScene extends BaseGameScene {
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
 
-    this.createTopButtons();
+    this.setupButtons();
+  }
+
+  setupButtons() {
+    const width = this.host.width;
+    this.backButton = new Button({
+      x: 18,
+      y: 34,
+      w: 74,
+      h: 36,
+      label: '返回',
+      variant: 'ghost',
+      onClick: () => this.exit(() => this.host.showMenu()),
+    });
+    this.resetButton = new Button({
+      x: width - 92,
+      y: 34,
+      w: 74,
+      h: 36,
+      label: '重开',
+      variant: 'ghost',
+      onClick: () => this.reset(),
+    });
+    this.buttons = [this.backButton, this.resetButton];
+    this.buttons.forEach(b => this.input.add(b));
   }
 
   reset() {
     this.state.reset();
-    this.closeModal();
+    if (this.modal) {
+      this.input.remove(this.modal);
+      this.modal = null;
+    }
     // 重置所有动画状态
     this.tileAnimations = {};
+    this.bottomQuote = getRandomQuote('huarongdao');
   }
 
   getTilePositions() {
@@ -114,8 +160,20 @@ export default class HuarongdaoScene extends BaseGameScene {
 
   renderGame(ctx) {
     const theme = this.theme;
+    this.buttons.forEach(b => b.render(ctx, theme));
     this.renderHeader(ctx);
     this.renderBoard(ctx);
+
+    // ── Bottom hint ─────────────────────────────────
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.boardY + this.boardSize + 28, {
+      size: 13,
+      color: theme.color.faint,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.body,
+    });
+
+    ctx.restore();
   }
 
   renderHeader(ctx) {

@@ -3,6 +3,7 @@ import { getHistory } from '../../core/storage.js';
 import Button from '../../ui/button.js';
 import MinesweeperState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
+import { getRandomQuote } from '../../ui/quotes.js';
 
 const LONG_PRESS_MS = 400;
 const CANCEL_DRAG_PX = 12;
@@ -28,6 +29,7 @@ export default class MinesweeperScene extends BaseGameScene {
     this.isFlagMode = false;
     this.resultShown = false;
     this._touch = null;
+    this.bottomQuote = getRandomQuote('minesweeper');
   }
 
   init() {
@@ -72,6 +74,7 @@ export default class MinesweeperScene extends BaseGameScene {
     this.modeButton.label = '标记';
     this.modeButton.variant = 'ghost';
     this.closeModal();
+    this.bottomQuote = getRandomQuote('minesweeper');
   }
 
   update(dt = 16) {
@@ -103,6 +106,16 @@ export default class MinesweeperScene extends BaseGameScene {
   renderGame(ctx) {
     this.renderHeader(ctx);
     this.renderBoard(ctx);
+
+    // ── Bottom hint ─────────────────────────────────
+    const theme = this.theme;
+    drawText(ctx, this.bottomQuote, this.host.width / 2, this.boardY + this.boardHeight + 28, {
+      size: 13,
+      color: theme.color.faint,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.body,
+    });
   }
 
   renderHeader(ctx) {

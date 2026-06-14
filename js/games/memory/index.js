@@ -2,6 +2,7 @@ import BaseGameScene from '../../core/game-scene-base.js';
 import { getHistory } from '../../core/storage.js';
 import MemoryState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect, contains } from '../../ui/canvas.js';
+import { getRandomQuote } from '../../ui/quotes.js';
 
 const FLIP_DURATION = 200;
 const MISMATCH_DELAY = 800;
@@ -17,6 +18,7 @@ export default class MemoryScene extends BaseGameScene {
     this.mismatchTimer = 0;
     this.mismatchCards = [];
     this.completedTimer = -1;
+    this.bottomQuote = getRandomQuote('memory');
     this.initAnimations();
   }
 
@@ -67,6 +69,7 @@ export default class MemoryScene extends BaseGameScene {
     this.mismatchTimer = 0;
     this.mismatchCards = [];
     this.completedTimer = -1;
+    this.bottomQuote = getRandomQuote('memory');
   }
 
   update(dt = 16) {
@@ -221,6 +224,16 @@ export default class MemoryScene extends BaseGameScene {
         ctx.restore();
       }
     }
+
+    // ── Bottom hint ─────────────────────────────────
+    const gridH = rows * size + (rows - 1) * gap;
+    drawText(ctx, this.bottomQuote, width / 2, this.gridY + gridH + 28, {
+      size: 13,
+      color: theme.color.faint,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.body,
+    });
   }
 
   onTouchStart(point) {

@@ -4,6 +4,7 @@ import { drawText, fillRoundRect, strokeRoundRect } from '../ui/canvas.js';
 import { getScores } from '../core/storage.js';
 import { GAMES } from '../games/registry.js';
 import InputDispatcher from '../core/input-dispatcher.js';
+import { getRandomQuote } from '../ui/quotes.js';
 
 export default class MenuScene {
   constructor(host) {
@@ -13,6 +14,9 @@ export default class MenuScene {
     this.scores = getScores();
     this.modal = null;
     this.input = new InputDispatcher();
+
+    // 随机语录
+    this.bottomQuote = getRandomQuote('menu');
 
     // Exit Animation States
     this.isExiting = false;
@@ -186,7 +190,7 @@ export default class MenuScene {
 
     this.cards.forEach((card, index) => this.renderGameCard(ctx, card, index, exitAlpha));
 
-    drawText(ctx, '本地计分 · 无排行 · 后续可接难度选项', width / 2, height - 42, {
+    drawText(ctx, this.bottomQuote, width / 2, height - 42, {
       size: 12,
       color: theme.color.faint,
       align: 'center',

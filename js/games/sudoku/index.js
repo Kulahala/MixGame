@@ -5,6 +5,8 @@ import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/can
 import { PUZZLE, SOLUTION } from './puzzle.js';
 import { generateSudoku } from './generator.js';
 import SudokuBoardState from './state.js';
+import InputDispatcher from '../../core/input-dispatcher.js';
+import { getRandomQuote } from '../../ui/quotes.js';
 
 export default class SudokuScene extends BaseGameScene {
   constructor(host, options = {}) {
@@ -22,8 +24,11 @@ export default class SudokuScene extends BaseGameScene {
 
     this.state = new SudokuBoardState(initialPuzzle, solution);
     this.selected = { row: 0, col: 2 };
+    this.buttons = [];
     this.pressedKey = 0;
     this.keyPressTimer = null;
+    this.input = new InputDispatcher();
+    this.bottomQuote = getRandomQuote('sudoku');
   }
 
   init() {
@@ -96,6 +101,7 @@ export default class SudokuScene extends BaseGameScene {
     this.noteButton.label = '笔记';
     this.noteButton.variant = 'ghost';
     this.closeModal();
+    this.bottomQuote = getRandomQuote('sudoku');
   }
 
   update(dt) {
@@ -252,7 +258,7 @@ export default class SudokuScene extends BaseGameScene {
       }
     }
 
-    drawText(ctx, '选格 · 入数 · 错误会标红', this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + (this.host.height < 600 ? 18 : 28), {
+    drawText(ctx, this.bottomQuote, this.host.width / 2, layout.y + layout.size * 3 + layout.gap * 2 + (this.host.height < 600 ? 18 : 28), {
       size: 12,
       color: theme.color.faint,
       align: 'center',
