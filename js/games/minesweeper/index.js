@@ -46,7 +46,7 @@ export default class MinesweeperScene extends BaseGameScene {
       y: this.host.safeTop + 8,
       w: 74,
       h: 36,
-      label: '揭开',
+      label: '标记',
       variant: 'ghost',
       onClick: () => this.toggleMode(),
     });
@@ -56,7 +56,7 @@ export default class MinesweeperScene extends BaseGameScene {
 
   toggleMode() {
     this.isFlagMode = !this.isFlagMode;
-    this.modeButton.label = this.isFlagMode ? '标记' : '揭开';
+    this.modeButton.label = this.isFlagMode ? '揭开' : '标记';
     this.modeButton.variant = this.isFlagMode ? 'secondary' : 'ghost';
   }
 
@@ -65,7 +65,7 @@ export default class MinesweeperScene extends BaseGameScene {
     this.state = new MinesweeperState(rows, cols, totalMines);
     this.isFlagMode = false;
     this.resultShown = false;
-    this.modeButton.label = '揭开';
+    this.modeButton.label = '标记';
     this.modeButton.variant = 'ghost';
     this.closeModal();
   }
