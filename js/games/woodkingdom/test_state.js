@@ -92,6 +92,7 @@ runTest('Resource updates and playing costs', () => {
 // 3. Test Airborne Sigil
 runTest('Airborne Sigil (bypass opponent card and hit scale)', () => {
   const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
   
   // Disable Opponent AI to test combat in isolation
   state.runOpponentAI = () => {};
@@ -116,6 +117,7 @@ runTest('Airborne Sigil (bypass opponent card and hit scale)', () => {
 // 4. Test Bifurcated Sigil
 runTest('Bifurcated Sigil (diagonal attacks)', () => {
   const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
   state.runOpponentAI = () => {};
 
   // Place player bifurcated pine (bifurcated, attack 1) in slot 1
@@ -156,6 +158,7 @@ runTest('Bifurcated Sigil (diagonal attacks)', () => {
 // 5. Test Deathtouch Sigil & Card Destruction Resources
 runTest('Deathtouch Sigil and destruction resource gains', () => {
   const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
   state.runOpponentAI = () => {};
 
   // Player mushroom (deathtouch, attack 1) in slot 0
@@ -181,6 +184,7 @@ runTest('Deathtouch Sigil and destruction resource gains', () => {
 // 6. Test Shield Sigil
 runTest('Shield Sigil (blocks first damage event)', () => {
   const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
   state.runOpponentAI = () => {};
 
   // Player sapling (attack 1) in slot 0
@@ -208,6 +212,7 @@ runTest('Shield Sigil (blocks first damage event)', () => {
 // 7. Test Scale Tilt, Win and Loss Conditions
 runTest('Scale tilt win and loss conditions', () => {
   const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
   state.runOpponentAI = () => {};
 
   // Test win condition (scale tilt >= 5)
@@ -222,6 +227,7 @@ runTest('Scale tilt win and loss conditions', () => {
   
   // Test loss condition (scale tilt <= -5)
   const state2 = new WoodKingdomState(1);
+  state2.opponentQueue.fill(null);
   state2.runOpponentAI = () => {};
   state2.scaleTilt = -4;
   
@@ -232,6 +238,34 @@ runTest('Scale tilt win and loss conditions', () => {
   assert.strictEqual(state2.scaleTilt, -5);
   assert.strictEqual(state2.isGameOver().finished, true);
   assert.strictEqual(state2.isGameOver().won, false);
+});
+
+// 8. Test Opponent Queue and Advancement
+runTest('Opponent queue placement and advancement', () => {
+  const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
+  state.runOpponentAI = () => {}; // Disable AI to control manually
+  
+  // Manually place card in opponent queue at slot 1
+  const sapling = state.createCard('sapling');
+  state.opponentQueue[1] = sapling;
+  assert.strictEqual(state.opponentSlots[1], null);
+  
+  // Resolve turn - should advance queue to slot 1
+  state.resolveTurn();
+  
+  assert.strictEqual(state.opponentSlots[1].instanceId, sapling.instanceId);
+  assert.strictEqual(state.opponentQueue[1], null);
+  
+  // Place another card in queue slot 1 while slot 1 is occupied
+  const squirrel = state.createCard('squirrel');
+  state.opponentQueue[1] = squirrel;
+  
+  state.resolveTurn();
+  
+  // frontline slot 1 remains sapling, queue slot 1 remains squirrel
+  assert.strictEqual(state.opponentSlots[1].instanceId, sapling.instanceId);
+  assert.strictEqual(state.opponentQueue[1].instanceId, squirrel.instanceId);
 });
 
 console.log('\nAll Wood Kingdom State Engine Unit Tests Passed successfully!');

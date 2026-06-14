@@ -108,11 +108,13 @@ export class WoodKingdomState {
     this.resources = { raindrop: 0, wood: 0, leaves: 0, acorn: 0 };
     this.playerSlots = [null, null, null, null];
     this.opponentSlots = [null, null, null, null];
+    this.opponentQueue = [null, null, null, null];
     this.hand = [];
     this.deck = [];
     this.scaleTilt = 0;
     this.turn = 1;
     this.initDeck();
+    this.runOpponentAI([]);
   }
 
   initDeck() {
@@ -159,11 +161,13 @@ export class WoodKingdomState {
     this.resources = { raindrop: 0, wood: 0, leaves: 0, acorn: 0 };
     this.playerSlots = [null, null, null, null];
     this.opponentSlots = [null, null, null, null];
+    this.opponentQueue = [null, null, null, null];
     this.hand = [];
     this.deck = [];
     this.scaleTilt = 0;
     this.turn = 1;
     this.initDeck();
+    this.runOpponentAI([]);
   }
 
   nextLevel() {
@@ -302,13 +306,13 @@ export class WoodKingdomState {
     }
 
     for (let i = 0; i < 4; i++) {
-      if (this.opponentSlots[i] === null) {
+      if (this.opponentQueue[i] === null) {
         if (Math.random() < placementProbability) {
           const randomIndex = Math.floor(Math.random() * cardPool.length);
           const cardId = cardPool[randomIndex];
           const card = this.createCard(cardId);
 
-          this.opponentSlots[i] = card;
+          this.opponentQueue[i] = card;
 
           log.push({
             type: 'opponent_play',
@@ -320,11 +324,26 @@ export class WoodKingdomState {
     }
   }
 
+  advanceOpponentQueue(log) {
+    for (let i = 0; i < 4; i++) {
+      if (this.opponentSlots[i] === null && this.opponentQueue[i] !== null) {
+        this.opponentSlots[i] = this.opponentQueue[i];
+        this.opponentQueue[i] = null;
+
+        log.push({
+          type: 'opponent_advance',
+          slotIndex: i,
+          card: { ...this.opponentSlots[i] }
+        });
+      }
+    }
+  }
+
   resolveTurn() {
     const log = [];
 
-    // 1. Opponent AI plays cards
-    this.runOpponentAI(log);
+    // 1. Opponent advances queue to frontline
+    this.advanceOpponentQueue(log);
 
     // 2. Combat Resolution left to right (slots 0 to 3)
     for (let i = 0; i < 4; i++) {
@@ -348,6 +367,9 @@ export class WoodKingdomState {
         this.resolveCardAttack('opponent', i, opponentCard, log);
       }
     }
+
+    // 3. Opponent AI plays new cards to queue for next turn
+    this.runOpponentAI(log);
 
     this.turn++;
 
