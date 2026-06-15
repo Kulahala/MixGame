@@ -55,7 +55,11 @@ export default class GameHost {
   }
 
   showMenu() {
-    this.setScene(new MenuScene(this));
+    const menu = new MenuScene(this);
+    if (this.lastMenuPage !== undefined) {
+      menu.currentPage = this.lastMenuPage;
+    }
+    this.setScene(menu);
   }
 
   startGame(id, options = {}) {

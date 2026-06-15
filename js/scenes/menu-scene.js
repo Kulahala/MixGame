@@ -77,6 +77,10 @@ export default class MenuScene {
 
   init() {
     const { width, height } = this.host;
+
+    // 根据当前选定的大厅分类，同步初始化视觉与卡牌偏移量，防止瞬闪
+    this.currentOffset = -this.currentPage * width;
+    this.targetOffset = -this.currentPage * width;
     
     // Categorize games in registry
     const classicIds = ['sudoku', 'huarongdao', 'minesweeper', 'slitherlink'];
@@ -671,6 +675,7 @@ export default class MenuScene {
       if (Math.abs(point.x - (width / 2 - 60)) < 40) {
         if (this.currentPage !== 0) {
           this.currentPage = 0;
+          this.host.lastMenuPage = 0;
           this.targetOffset = 0;
           this.swipeStartOffset = this.currentOffset;
           this.swipeTime = 0;
@@ -681,6 +686,7 @@ export default class MenuScene {
       if (Math.abs(point.x - (width / 2 + 60)) < 40) {
         if (this.currentPage !== 1) {
           this.currentPage = 1;
+          this.host.lastMenuPage = 1;
           this.targetOffset = -width;
           this.swipeStartOffset = this.currentOffset;
           this.swipeTime = 0;
@@ -761,6 +767,7 @@ export default class MenuScene {
       }
 
       this.currentPage = targetPage;
+      this.host.lastMenuPage = targetPage;
       this.targetOffset = -this.currentPage * width;
       this.swipeStartOffset = this.currentOffset;
       this.swipeTime = 0;
