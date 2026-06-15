@@ -70,13 +70,7 @@ export default class BaseGameScene {
       onClick: () => this.exit(() => this.host.showMenu()),
     });
 
-    this.resetButton = new Button({
-      x: 100, y: topY, w: 74, h: 36,
-      label: '重开', variant: 'ghost',
-      onClick: () => this.reset(),
-    });
-
-    this.buttons = [this.backButton, ...extraButtons, this.resetButton];
+    this.buttons = [this.backButton, ...extraButtons];
     this.buttons.forEach(b => this.input.add(b));
   }
 
