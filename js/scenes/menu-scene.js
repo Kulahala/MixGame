@@ -173,11 +173,33 @@ export default class MenuScene {
       return;
     }
 
+    let options = game.configOptions;
+    if (game.id === 'woodkingdom') {
+      let progress = null;
+      try {
+        if (typeof wx !== 'undefined') {
+          const str = wx.getStorageSync('woodkingdom_campaign_progress');
+          if (str) {
+            progress = typeof str === 'string' ? JSON.parse(str) : str;
+          }
+        }
+      } catch (e) {
+        console.error('Failed to get woodkingdom progress', e);
+      }
+
+      if (progress && progress.level && progress.level >= 1 && progress.level <= 3) {
+        options = [
+          { label: `继续当前战役 (第 ${progress.level} 关)`, value: { resume: true, progress } },
+          { label: '开始新战役', value: { level: 1 } }
+        ];
+      }
+    }
+
     this.modal = new ConfigModal({
       host: this.host,
       game: game,
       title: game.configTitle || `${game.name} 配置`,
-      options: game.configOptions,
+      options: options,
       onConfirm: (val) => {
         const options = val || {};
         this.closeModal(() => {

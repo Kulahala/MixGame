@@ -41,11 +41,22 @@ export default class Game2048Scene extends BaseGameScene {
   init() {
     const width = this.host.width;
     const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
 
     this.createTopButtons();
 
-    this.cellSize = Math.floor(Math.min((width - 48) / 4, (height - 220) / 4));
-    this.gridSize = this.cellSize * 4 + this.gap * 5;
+    const maxGridSize = isTablet ? 400 : 342;
+    const tempCellSize = Math.floor(Math.min((width - 48) / 4, (height - 220) / 4));
+    const tempGridSize = tempCellSize * 4 + this.gap * 5;
+
+    if (tempGridSize > maxGridSize) {
+      this.cellSize = Math.floor((maxGridSize - this.gap * 5) / 4);
+      this.gridSize = this.cellSize * 4 + this.gap * 5;
+    } else {
+      this.cellSize = tempCellSize;
+      this.gridSize = tempGridSize;
+    }
+
     this.gridX = Math.floor((width - this.gridSize) / 2);
     
     // 中下部符合人体工学的垂直居中偏下布局，方便单手游玩

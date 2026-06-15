@@ -49,6 +49,11 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 - **用户友好度编号（Friendly Indexes）**：在面向用户展现的占位符或序号中，必须将底层 0-indexed 数据展示为 1-based（如列号 0-3 映射为 1-4），以提供契合普通用户心智模型的极佳用户体验。
 - **同排卡牌多行信息水平绝对对齐（Symmetric Y-Alignment for Multi-line Cards）**：若卡牌内文字信息存在动态增减（如已游玩成绩），必须让同排所有卡牌的标题与简介统一固定在相同的 Y 轴高度上，未有数据的卡牌下方预留等高空白，避免由于字数或行数不同造成横向水平参考高低参差的无序杂乱感。
 - **拉伸弹窗触控防误触与热区联动（Accordion Modal Safety & Heatmap Binding）**：在实现基于插值动态伸缩拉伸的弹窗（风琴弹窗）时，必须在高度过渡动画未执行完毕前（例如淡入因子 `rulesAlpha` 处于过渡态时）通过拦截限制按钮和配置项的点击以防误触；同时，所有交互项的触控热区绝对坐标必须与当前高度动态绑定以防错位。
+- **三阶跨屏自适应兼容方案（3-Tier Responsive Layout）**：所有游戏场景的 `init()` 必须遵循统一的三阶屏幕判定逻辑，绝不允许对棋盘/网格大小硬编码单一上限值。判定规则如下：
+  - **平板/大宽屏（Tablet）**：`const isTablet = width >= 500 && height >= 600 && height >= width;` — 主动放大核心元素（棋盘/格子/卡牌），使大屏设备的游玩体验饱满舒适，避免过多留白。
+  - **标准全面屏手机（Standard）**：`height >= 700`（且非平板）— 维持标准黄金尺寸，优先大拇指单手操作舒适度。
+  - **矮小屏手机（Compact，如 iPhone SE2）**：`height < 700`（进一步 `height < 600` 为极限档）— 先压缩元素间距，实在过小再按比例缩小棋盘/格子，确保所有操作区均不超出屏幕且不遮挡 safeTop。
+  - 具体各游戏的三阶参数参见对应 `js/games/*/index.js` 的 `init()` 方法。
 
 ## Design System & Color Palette (设计系统与配色规范)
 
@@ -120,3 +125,10 @@ Read the real files before changing behavior. Keep edits narrow, avoid broad ref
 Use `README.md` for project introduction and run instructions, `ARCHITECTURE.md` for current architecture and extension boundaries, and `AGENTS.md` for contributor and agent behavior rules. Do not put architecture update history in `ARCHITECTURE.md`; use Git history for change history.
 
 `plan.md` is a local multi-agent collaboration file. Read it before coordinated planning or review, write cross-agent feedback under its Feedback section, and keep it ignored rather than pushing it to GitHub.
+
+**Commit Pre-flight Cleanup（提交前清理临时文件）**：在执行 `git commit` 之前，必须检查并清理由多代理任务框架自动产生的以下临时文件或文件夹，不得将其纳入版本控制：
+- `.agents/` — teamwork_preview 框架运行时自动生成的编排日志与子代理通信缓存目录。
+- `ORIGINAL_REQUEST.md` — Sentinel 初始化时自动写入的原始任务记录，属于过程性产物。
+- `PROJECT.md` — Orchestrator 自动生成的项目分析文档，属于临时调研记录。
+
+上述文件若已存在，在 commit 前通过 `Remove-Item -Recurse -Force .agents`, `Remove-Item ORIGINAL_REQUEST.md`, `Remove-Item PROJECT.md` 清除，或确认已在 `.gitignore` 中被忽略后再提交。

@@ -112,7 +112,7 @@ export const GAMES = [
       { label: '5 x 5 (简单)', value: { rows: 5, cols: 5 } },
       { label: '7 x 7 (困难)', value: { rows: 7, cols: 7 } }
     ],
-    themeColor: '#52677a',
+    themeColor: '#536b5d',
     iconText: '圈'
   },
   {

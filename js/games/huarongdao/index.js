@@ -34,14 +34,27 @@ export default class HuarongdaoScene extends BaseGameScene {
   init() {
     const width = this.host.width;
     const height = this.host.height;
-    this.boardSize = Math.min(width - 32, 342);
+    const isTablet = width >= 500 && height >= 600 && height >= width;
+
+    // 三阶自适应棋盘尺寸
+    if (isTablet) {
+      this.boardSize = 400;
+    } else if (height < 600) {
+      this.boardSize = Math.min(width - 32, 240);
+    } else if (height < 700) {
+      this.boardSize = Math.min(width - 32, 280);
+    } else {
+      this.boardSize = Math.min(width - 32, 342);
+    }
+
     this.cell = this.boardSize / this.state.size;
     this.boardX = (width - this.boardSize) / 2;
-    
+
     // 中下部符合人体工学的垂直居中偏下布局，方便单手游玩
     this.boardY = Math.floor((height - this.boardSize) / 2) + 30;
-    if (this.boardY < 130) this.boardY = 130;
-    
+    const safeLimit = this.host.safeTop + 130;
+    if (this.boardY < safeLimit) this.boardY = safeLimit;
+
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
 

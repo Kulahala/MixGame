@@ -37,12 +37,14 @@ export default class MemoryScene extends BaseGameScene {
     const height = this.host.height;
     const cols = this.state.cols;
     const rows = this.state.rows;
-    const gap = 8;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
+    const gap = isTablet ? 12 : 8;
 
     this.createTopButtons();
 
     this.gap = gap;
-    this.cardSize = Math.max(50, Math.min(90, Math.floor(Math.min(
+    const maxCardSize = isTablet ? 120 : 90;
+    this.cardSize = Math.max(50, Math.min(maxCardSize, Math.floor(Math.min(
       (width - 32 - (cols - 1) * gap) / cols,
       (height - 220 - (rows - 1) * gap) / rows
     ))));
@@ -57,8 +59,8 @@ export default class MemoryScene extends BaseGameScene {
       this.gridY = this.host.safeTop + 130;
     }
 
-    this.titleY = this.host.safeTop + 90;
-    this.statsY = this.host.safeTop + 125;
+    this.titleY = this.host.safeTop + (isTablet ? 100 : 90);
+    this.statsY = this.host.safeTop + (isTablet ? 140 : 125);
   }
 
   reset() {

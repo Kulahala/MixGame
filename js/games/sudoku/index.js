@@ -34,31 +34,39 @@ export default class SudokuScene extends BaseGameScene {
   init() {
     const width = this.host.width;
     const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
 
     let boardMargin = 32;
     let topMargin = 140;
-    if (height < 700) {
-      boardMargin = 60;
-      topMargin = 70;
-    }
-    if (height < 600) {
-      boardMargin = 64; // 给盘面更多缩放
-      topMargin = 55; // Header被压得更扁，棋盘继续上移
+    if (!isTablet) {
+      if (height < 700) {
+        boardMargin = 60;
+        topMargin = 70;
+      }
+      if (height < 600) {
+        boardMargin = 64; // 给盘面更多缩放
+        topMargin = 55; // Header被压得更扁，棋盘继续上移
+      }
     }
     topMargin += this.host.safeTop;
 
-    this.boardSize = Math.min(width - boardMargin, 342);
-    if (height < 700 && this.boardSize > 280) this.boardSize = 280;
-    if (height < 600 && this.boardSize > 240) this.boardSize = 240;
+    if (isTablet) {
+      this.boardSize = 420;
+    } else {
+      this.boardSize = Math.min(width - boardMargin, 342);
+      if (height < 700 && this.boardSize > 280) this.boardSize = 280;
+      if (height < 600 && this.boardSize > 240) this.boardSize = 240;
+    }
 
     this.cell = this.boardSize / 9;
     this.boardX = (width - this.boardSize) / 2;
     this.boardY = topMargin;
 
+    const isTiny = !isTablet && height < 600;
     // 工具按钮所在行
-    this.actionBtnY = this.boardY + this.boardSize + (height < 600 ? 10 : 16);
+    this.actionBtnY = this.boardY + this.boardSize + (isTiny ? 10 : 16);
     // 数字键盘所在行
-    this.keyY = this.actionBtnY + 36 + (height < 600 ? 10 : 12);
+    this.keyY = this.actionBtnY + 36 + (isTiny ? 10 : 12);
 
     // 缓存键盘布局
     this._cacheKeypadLayout();
@@ -139,8 +147,11 @@ export default class SudokuScene extends BaseGameScene {
   renderHeader(ctx) {
     const theme = this.theme;
     const safeTop = this.host.safeTop;
-    const isSmall = this.host.height < 700;
-    const isTiny = this.host.height < 600;
+    const width = this.host.width;
+    const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
+    const isSmall = !isTablet && height < 700;
+    const isTiny = !isTablet && height < 600;
     const titleY = safeTop + (isTiny ? 25 : (isSmall ? 32 : 52));
     const subY = safeTop + (isTiny ? 42 : (isSmall ? 52 : 102));
 
@@ -337,11 +348,23 @@ export default class SudokuScene extends BaseGameScene {
   }
 
   _cacheKeypadLayout() {
-    const isTiny = this.host.height < 600;
-    const gap = isTiny ? 6 : 10;
+    const width = this.host.width;
+    const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
+
+    let gap = 10;
     let maxKeySize = 72;
-    if (this.host.height < 700) maxKeySize = 56;
-    if (isTiny) maxKeySize = 48;
+
+    if (isTablet) {
+      gap = 12;
+      maxKeySize = 76;
+    } else {
+      const isTiny = height < 600;
+      gap = isTiny ? 6 : 10;
+      if (height < 700) maxKeySize = 56;
+      if (isTiny) maxKeySize = 48;
+    }
+
     const size = Math.min(maxKeySize, Math.floor((this.host.width - 96 - gap * 2) / 3));
     const padWidth = size * 3 + gap * 2;
     this._keypadLayout = {

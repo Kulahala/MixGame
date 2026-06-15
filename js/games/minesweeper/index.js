@@ -35,16 +35,25 @@ export default class MinesweeperScene extends BaseGameScene {
   init() {
     const width = this.host.width;
     const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
 
     // 计算网格尺寸
     this.cellSize = Math.min(
       (width - 32) / this.state.cols,
       (height - 220) / this.state.rows
     );
+
+    if (isTablet && this.cellSize > 46) {
+      this.cellSize = 46;
+    }
+
     this.boardWidth = this.cellSize * this.state.cols;
     this.boardHeight = this.cellSize * this.state.rows;
     this.boardX = (width - this.boardWidth) / 2;
-    this.boardY = this.host.safeTop + 120 + Math.max(0, (height - 220 - this.boardHeight) / 2);
+
+    const baseOffset = isTablet ? 180 : 120;
+    const heightPadding = isTablet ? 300 : 220;
+    this.boardY = this.host.safeTop + baseOffset + Math.max(0, (height - heightPadding - this.boardHeight) / 2);
 
     // 模式切换按钮
     this.modeButton = new Button({
@@ -121,9 +130,15 @@ export default class MinesweeperScene extends BaseGameScene {
   renderHeader(ctx) {
     const theme = this.theme;
     const safeTop = this.host.safeTop;
+    const width = this.host.width;
+    const height = this.host.height;
+    const isTablet = width >= 500 && height >= 600 && height >= width;
     const remaining = this.state.totalMines - this.state.getFlagCount();
 
-    drawText(ctx, '扫雷', this.host.width / 2, safeTop + 90, {
+    const titleY = safeTop + (isTablet ? 110 : 90);
+    const statsY = safeTop + (isTablet ? 140 : 116);
+
+    drawText(ctx, '扫雷', this.host.width / 2, titleY, {
       size: 23,
       color: theme.color.ink,
       align: 'center',
@@ -132,7 +147,7 @@ export default class MinesweeperScene extends BaseGameScene {
       weight: '600',
     });
 
-    drawText(ctx, `剩余 ${remaining} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, safeTop + 116, {
+    drawText(ctx, `剩余 ${remaining} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, statsY, {
       size: 13,
       color: theme.color.muted,
       align: 'center',
