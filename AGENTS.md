@@ -57,7 +57,7 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 
 ## Design System & Color Palette (设计系统与配色规范)
 
-新游戏和新组件的设计必须严格遵循“静游集”特有的**低饱和度日系温暖雅致风格（Elegant Theme）**，禁止使用高饱和度的纯色（如纯红 `#FF0000`、纯蓝 `#0000FF`），必须通过引用 `theme` 变量来使用以下预定义的 Design Tokens：
+新游戏和新组件的设计必须严格遵循“片刻游”特有的**低饱和度日系温暖雅致风格（Elegant Theme）**，禁止使用高饱和度的纯色（如纯红 `#FF0000`、纯蓝 `#0000FF`），必须通过引用 `theme` 变量来使用以下预定义的 Design Tokens：
 
 1. **背景与底色（Warm White）**：
    * 页面大背景使用暖灰白 `theme.color.bg` (`#f4f2ed`)。
