@@ -347,6 +347,59 @@ export default class MenuScene {
     ctx.lineTo(width - 63, crossY + 15);
     ctx.stroke();
     ctx.restore();
+
+    // ── 左侧花茎线稿装饰 ─────────────────────────────────
+    // 一条纤细的茎，上面生长出三朵 4 瓣小花
+    ctx.save();
+    ctx.strokeStyle = theme.color.muted;
+    ctx.lineWidth = 0.9;
+    ctx.globalAlpha = 0.18;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    const stemX = 46;
+    const stemTop = crossY - 18;
+    const stemBot = crossY + 20;
+
+    // 主茎
+    ctx.beginPath();
+    ctx.moveTo(stemX, stemBot);
+    ctx.bezierCurveTo(stemX - 3, crossY + 5, stemX + 3, crossY - 5, stemX, stemTop);
+    ctx.stroke();
+
+    // 绘制一朵小花的辅助函数 (cx, cy, r: 花瓣长轴, petals)
+    const drawFlower = (fx, fy, r) => {
+      const petals = 4;
+      for (let i = 0; i < petals; i++) {
+        const angle = (i / petals) * Math.PI * 2;
+        const px = fx + Math.cos(angle) * r;
+        const py = fy + Math.sin(angle) * r;
+        ctx.beginPath();
+        ctx.ellipse(px, py, r * 0.55, r * 0.32, angle, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      // 花心小圆
+      ctx.beginPath();
+      ctx.arc(fx, fy, r * 0.22, 0, Math.PI * 2);
+      ctx.stroke();
+    };
+
+    // 三朵花分布在茎上
+    drawFlower(stemX - 1, stemTop, 4.5);        // 顶花
+    drawFlower(stemX + 8, crossY - 4, 3.5);     // 右侧中花（长出侧枝）
+    drawFlower(stemX - 6, crossY + 10, 3);      // 左下花苞（较小）
+
+    // 两条短侧枝
+    ctx.beginPath();
+    ctx.moveTo(stemX, crossY - 6);
+    ctx.lineTo(stemX + 7, crossY - 5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(stemX, crossY + 8);
+    ctx.lineTo(stemX - 5, crossY + 10);
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   renderCategoryTabs(ctx) {
@@ -428,6 +481,28 @@ export default class MenuScene {
     if (card.isPressed) {
       fillRoundRect(ctx, card.x, card.y, card.w, card.h, theme.radius.lg, 'rgba(0, 0, 0, 0.035)');
     }
+
+    // ── 卡片左下角五瓣花点缀 ──────────────────────────────
+    ctx.save();
+    ctx.strokeStyle = theme.color.muted;
+    ctx.lineWidth = 0.8;
+    ctx.globalAlpha = (exitAlpha * reveal) * 0.20;
+    ctx.lineCap = 'round';
+    const fx = card.x + 14;
+    const fy = card.y + card.h - 14;
+    const fr = 4;
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const px = fx + Math.cos(a) * fr;
+      const py = fy + Math.sin(a) * fr;
+      ctx.beginPath();
+      ctx.ellipse(px, py, fr * 0.5, fr * 0.28, a, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(fx, fy, fr * 0.18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
 
     ctx.fillStyle = accent;
     ctx.globalAlpha = exitAlpha * 0.08;
