@@ -47,6 +47,8 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 - **全面屏自适应布局（Responsive Home Indicator Buffer）**：底部手牌与按钮堆必须防切，但又不能由于死板上移导致矮屏幕下中段拥挤。必须使用响应式计算，在大屏（如 `height >= 750`）上将底部堆上提 30px，而在矮屏幕上自动微缩还原，完美契合全面屏 Home 小黑条的安全适配。
 - **视觉宽度对齐边线（Horizontal Edge Alignment）**：下方的独立摸牌堆、回合结束等功能行的总宽必须限宽并居中对齐到与中间棋盘一样的物理宽度（如 310px），形成隐形的左右垂直参考边线，避免由于过度分散显得左右空旷与不协调。
 - **用户友好度编号（Friendly Indexes）**：在面向用户展现的占位符或序号中，必须将底层 0-indexed 数据展示为 1-based（如列号 0-3 映射为 1-4），以提供契合普通用户心智模型的极佳用户体验。
+- **同排卡牌多行信息水平绝对对齐（Symmetric Y-Alignment for Multi-line Cards）**：若卡牌内文字信息存在动态增减（如已游玩成绩），必须让同排所有卡牌的标题与简介统一固定在相同的 Y 轴高度上，未有数据的卡牌下方预留等高空白，避免由于字数或行数不同造成横向水平参考高低参差的无序杂乱感。
+- **拉伸弹窗触控防误触与热区联动（Accordion Modal Safety & Heatmap Binding）**：在实现基于插值动态伸缩拉伸的弹窗（风琴弹窗）时，必须在高度过渡动画未执行完毕前（例如淡入因子 `rulesAlpha` 处于过渡态时）通过拦截限制按钮和配置项的点击以防误触；同时，所有交互项的触控热区绝对坐标必须与当前高度动态绑定以防错位。
 
 ## Design System & Color Palette (设计系统与配色规范)
 
