@@ -55,10 +55,10 @@ export default class MinesweeperScene extends BaseGameScene {
     const heightPadding = isTablet ? 300 : 220;
     this.boardY = this.host.safeTop + baseOffset + Math.max(0, (height - heightPadding - this.boardHeight) / 2);
 
-    // 模式切换按钮
+    // 模式切换按钮 (移至棋盘下方，更符合大拇指单手交互，并空出顶部避让胶囊)
     this.modeButton = new Button({
       x: width / 2 - 37,
-      y: this.host.safeTop + 8,
+      y: this.boardY + this.boardHeight + (isTablet ? 24 : 16),
       w: 74,
       h: 36,
       label: '标记',
@@ -66,7 +66,9 @@ export default class MinesweeperScene extends BaseGameScene {
       onClick: () => this.toggleMode(),
     });
 
-    this.createTopButtons([this.modeButton]);
+    this.createTopButtons([]);
+    this.buttons.push(this.modeButton);
+    this.input.add(this.modeButton);
   }
 
   toggleMode() {

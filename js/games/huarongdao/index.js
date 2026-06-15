@@ -58,31 +58,7 @@ export default class HuarongdaoScene extends BaseGameScene {
     // 初始化所有方块渲染动画状态
     this.tileAnimations = {};
 
-    this.setupButtons();
-  }
-
-  setupButtons() {
-    const width = this.host.width;
-    this.backButton = new Button({
-      x: 18,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '返回',
-      variant: 'ghost',
-      onClick: () => this.exit(() => this.host.showMenu()),
-    });
-    this.resetButton = new Button({
-      x: width - 92,
-      y: 34,
-      w: 74,
-      h: 36,
-      label: '重开',
-      variant: 'ghost',
-      onClick: () => this.reset(),
-    });
-    this.buttons = [this.backButton, this.resetButton];
-    this.buttons.forEach(b => this.input.add(b));
+    this.createTopButtons();
   }
 
   reset() {

@@ -71,7 +71,7 @@ export default class BaseGameScene {
     });
 
     this.resetButton = new Button({
-      x: width - 92, y: topY, w: 74, h: 36,
+      x: 100, y: topY, w: 74, h: 36,
       label: '重开', variant: 'ghost',
       onClick: () => this.reset(),
     });
