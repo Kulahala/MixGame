@@ -270,7 +270,7 @@ export default class MenuScene {
     const titleSize = topArea < 140 ? 26 : 32;
     const subtitleSize = topArea < 140 ? 12 : 13;
 
-    drawText(ctx, '静游集', width / 2, titleY, {
+    drawText(ctx, '片刻游', width / 2, titleY, {
       size: titleSize,
       color: theme.color.ink,
       align: 'center',
@@ -279,7 +279,7 @@ export default class MenuScene {
       weight: '600',
     });
 
-    drawText(ctx, '安静一点的小游戏合集', width / 2, subtitleY, {
+    drawText(ctx, '片刻之间，自得其乐', width / 2, subtitleY, {
       size: subtitleSize,
       color: theme.color.muted,
       align: 'center',
