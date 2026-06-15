@@ -5,6 +5,7 @@ import Game2048Scene from './game2048/index.js';
 import MemoryScene from './memory/index.js';
 import SlitherlinkScene from './slitherlink/index.js';
 import WoodKingdomScene from './woodkingdom/index.js';
+import OneStrokeScene from './onestroke/index.js';
 
 
 export const GAMES = [
@@ -130,6 +131,24 @@ export const GAMES = [
     ],
     themeColor: '#7a4f3f',
     iconText: '森'
+  },
+  {
+    id: 'onestroke',
+    name: '一笔画',
+    sceneClass: OneStrokeScene,
+    description: '连线走通所有空白方格',
+    rules: '【一笔画规则说明】\n1. 从带有金色高亮（起点）的格子开始，通过滑动连接相邻的格子。\n2. 目标是连续走通棋盘上除障碍物以外的所有空白方格且不能重复走同一个格子。\n3. 在滑动时，可向后倒退抹除多余连线，或者通过点击「返回」再重新进入重开游戏。',
+    formatScore: (scoreObj) => {
+      return scoreObj && scoreObj.bestScore ? `最佳 ${scoreObj.bestScore} 分 · ${scoreObj.bestTime}s` : null;
+    },
+    configTitle: '一笔画网格阶数',
+    configOptions: [
+      { label: '4 x 4 (1个障碍)', value: { size: 4, obstacleCount: 1 } },
+      { label: '5 x 5 (2个障碍)', value: { size: 5, obstacleCount: 2 } },
+      { label: '6 x 6 (3个障碍)', value: { size: 6, obstacleCount: 3 } }
+    ],
+    themeColor: '#7a4f3f',
+    iconText: '画'
   }
 ];
 
