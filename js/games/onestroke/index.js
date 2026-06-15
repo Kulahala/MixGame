@@ -50,6 +50,9 @@ export default class OneStrokeScene extends BaseGameScene {
     this.boardX = boardX;
 
     this.createTopButtons();
+
+    // 初始化方块弹性缩放系数
+    this.gridScales = Array.from({ length: size }, () => Array(size).fill(1.0));
   }
 
   reset() {
@@ -58,10 +61,27 @@ export default class OneStrokeScene extends BaseGameScene {
     this.bottomQuote = getRandomQuote('onestroke');
     this.isDragging = false;
     this.completed = false;
+    this.gridScales = Array.from({ length: this.size }, () => Array(this.size).fill(1.0));
   }
 
   update(dt = 16) {
     if (super.update(dt)) return;
+
+    // 平滑恢复方格缩放因子至 1.0
+    if (this.gridScales) {
+      for (let r = 0; r < this.size; r++) {
+        for (let c = 0; c < this.size; c++) {
+          const s = this.gridScales[r][c];
+          if (s > 1.0) {
+            this.gridScales[r][c] -= dt * 0.0025;
+            if (this.gridScales[r][c] < 1.0) this.gridScales[r][c] = 1.0;
+          } else if (s < 1.0) {
+            this.gridScales[r][c] += dt * 0.0025;
+            if (this.gridScales[r][c] > 1.0) this.gridScales[r][c] = 1.0;
+          }
+        }
+      }
+    }
 
     if (this.state.won && !this.completed) {
       this.completed = true;
@@ -98,6 +118,26 @@ export default class OneStrokeScene extends BaseGameScene {
       return { r, c };
     }
     return null;
+  }
+
+  executeDragTo(r, c) {
+    const oldPath = [...this.state.path];
+    const success = this.state.dragTo(r, c);
+    if (success) {
+      const newPath = this.state.path;
+      if (newPath.length > oldPath.length) {
+        // 连入新格子：播放轻微膨胀波纹效果
+        const last = newPath[newPath.length - 1];
+        this.gridScales[last.r][last.c] = 1.15;
+      } else if (newPath.length < oldPath.length) {
+        // 回撤格子：所有被擦除缩回的格子播放向内缩小动效
+        const removed = oldPath.slice(newPath.length);
+        removed.forEach(cell => {
+          this.gridScales[cell.r][cell.c] = 0.85;
+        });
+      }
+    }
+    return success;
   }
 
   renderGame(ctx) {
@@ -144,17 +184,26 @@ export default class OneStrokeScene extends BaseGameScene {
         const isObstacle = type === 2; // CELL_TYPES.OBSTACLE
         const isVisited = this.state.path.some(p => p.r === r && p.c === c);
 
-        const cellX = boardX + gap + c * (cellSize + gap);
-        const cellY = boardY + gap + r * (cellSize + gap);
+        const cx = boardX + gap + c * (cellSize + gap) + cellSize / 2;
+        const cy = boardY + gap + r * (cellSize + gap) + cellSize / 2;
+        const scale = (this.gridScales && this.gridScales[r]) ? this.gridScales[r][c] : 1.0;
+        const drawSize = cellSize * scale;
+        const halfSize = drawSize / 2;
+
+        const cellX = cx - halfSize;
+        const cellY = cy - halfSize;
         const radius = theme.radius.sm;
 
         if (isStart) {
-          fillRoundRect(ctx, cellX, cellY, cellSize, cellSize, radius, theme.color.gold);
+          fillRoundRect(ctx, cellX, cellY, drawSize, drawSize, radius * scale, theme.color.gold);
         } else if (isObstacle) {
+          // 障碍物作为静态死格，不受缩放系数 scale 影响，保持原尺寸 cellSize 规整排列
+          const cellX_base = boardX + gap + c * (cellSize + gap);
+          const cellY_base = boardY + gap + r * (cellSize + gap);
           ctx.save();
-          fillRoundRect(ctx, cellX, cellY, cellSize, cellSize, radius, theme.color.paperDeep);
+          fillRoundRect(ctx, cellX_base, cellY_base, cellSize, cellSize, radius, theme.color.paperDeep);
 
-          roundRect(ctx, cellX, cellY, cellSize, cellSize, radius);
+          roundRect(ctx, cellX_base, cellY_base, cellSize, cellSize, radius);
           ctx.clip();
 
           // Diagonal hatch lines at 45 degrees
@@ -163,17 +212,17 @@ export default class OneStrokeScene extends BaseGameScene {
           ctx.beginPath();
           const spacing = 8;
           for (let offset = -cellSize; offset < cellSize * 2; offset += spacing) {
-            ctx.moveTo(cellX + offset, cellY);
-            ctx.lineTo(cellX + offset + cellSize, cellY + cellSize);
+            ctx.moveTo(cellX_base + offset, cellY_base);
+            ctx.lineTo(cellX_base + offset + cellSize, cellY_base + cellSize);
           }
           ctx.stroke();
           ctx.restore();
 
-          strokeRoundRect(ctx, cellX, cellY, cellSize, cellSize, radius, theme.color.muted, 1);
+          strokeRoundRect(ctx, cellX_base, cellY_base, cellSize, cellSize, radius, theme.color.muted, 1);
         } else if (isVisited) {
-          fillRoundRect(ctx, cellX, cellY, cellSize, cellSize, radius, theme.color.sage);
+          fillRoundRect(ctx, cellX, cellY, drawSize, drawSize, radius * scale, theme.color.sage);
         } else {
-          fillRoundRect(ctx, cellX, cellY, cellSize, cellSize, radius, theme.color.paperDeep);
+          fillRoundRect(ctx, cellX, cellY, drawSize, drawSize, radius * scale, theme.color.paperDeep);
         }
       }
     }
@@ -228,10 +277,7 @@ export default class OneStrokeScene extends BaseGameScene {
       const isObstacle = this.state.grid[r][c] === 2; // CELL_TYPES.OBSTACLE
 
       if (isLast || isStart || (isAdjacent && !isObstacle && !isVisited) || (isVisited && !isObstacle)) {
-        this.state.dragTo(r, c);
-        if (typeof wx !== 'undefined' && wx.vibrateShort) {
-          wx.vibrateShort({ type: 'light' });
-        }
+        this.executeDragTo(r, c);
         this.isDragging = true;
       }
     }
@@ -247,12 +293,7 @@ export default class OneStrokeScene extends BaseGameScene {
         const { r, c } = cell;
         const lastCell = this.state.path[this.state.path.length - 1];
         if (r !== lastCell.r || c !== lastCell.c) {
-          const success = this.state.dragTo(r, c);
-          if (success) {
-            if (typeof wx !== 'undefined' && wx.vibrateShort) {
-              wx.vibrateShort({ type: 'light' });
-            }
-          }
+          this.executeDragTo(r, c);
         }
       }
     }
