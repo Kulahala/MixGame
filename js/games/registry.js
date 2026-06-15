@@ -147,7 +147,7 @@ export const GAMES = [
       { label: '5 x 5 (2个障碍)', value: { size: 5, obstacleCount: 2 } },
       { label: '6 x 6 (3个障碍)', value: { size: 6, obstacleCount: 3 } }
     ],
-    themeColor: '#7a4f3f',
+    themeColor: '#536b5d',
     iconText: '画'
   }
 ];
