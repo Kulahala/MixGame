@@ -116,13 +116,14 @@ export default class MenuScene {
       const y = topArea + row * (cardH + rowGap);
 
       const scoreData = this.scores[game.id];
+      const record = game.formatScore(scoreData);
       const btn = new Button({
         x,
         y,
         w: cardW,
         h: cardH,
         label: game.name,
-        detail: game.formatScore(scoreData),
+        detail: game.description,
         variant: 'secondary',
         onClick: () => this.showGameConfig(game),
       });
@@ -130,6 +131,7 @@ export default class MenuScene {
       btn.baseX = x;
       btn.game = game;
       btn.pageIndex = index;
+      btn.record = record;
       this.input.add(btn);
       this.cards.push(btn);
     });
@@ -142,13 +144,14 @@ export default class MenuScene {
       const y = topArea + row * (cardH + rowGap);
 
       const scoreData = this.scores[game.id];
+      const record = game.formatScore(scoreData);
       const btn = new Button({
         x: x + width, // Shifted by width
         y,
         w: cardW,
         h: cardH,
         label: game.name,
-        detail: game.formatScore(scoreData),
+        detail: game.description,
         variant: 'secondary',
         onClick: () => this.showGameConfig(game),
       });
@@ -156,6 +159,7 @@ export default class MenuScene {
       btn.baseX = x;
       btn.game = game;
       btn.pageIndex = index;
+      btn.record = record;
       this.input.add(btn);
       this.cards.push(btn);
     });
@@ -171,6 +175,7 @@ export default class MenuScene {
 
     this.modal = new ConfigModal({
       host: this.host,
+      game: game,
       title: game.configTitle || `${game.name} 配置`,
       options: game.configOptions,
       onConfirm: (val) => {
@@ -409,6 +414,8 @@ export default class MenuScene {
 
     // Card numbering and texts
     const displayIndex = card.pageIndex + 1; // 01, 02 per page style
+    const hasRecord = !!card.record;
+
     if (cols === 2) {
       const padX = 12;
       const numSize = 11;
@@ -419,6 +426,9 @@ export default class MenuScene {
       const iconX = card.x + card.w - iconSize - 10;
       const iconY = card.y + card.h * 0.35 - iconSize / 2;
 
+      const labelY = card.y + card.h * 0.38;
+      const detailY = card.y + card.h * 0.60;
+
       drawText(ctx, String(displayIndex).padStart(2, '0'), card.x + padX, card.y + 16, {
         size: numSize,
         color: theme.color.gold,
@@ -428,7 +438,7 @@ export default class MenuScene {
         weight: '600',
       });
 
-      drawText(ctx, card.label, card.x + padX, card.y + card.h * 0.45, {
+      drawText(ctx, card.label, card.x + padX, labelY, {
         size: nameSize,
         color: theme.color.ink,
         align: 'left',
@@ -437,13 +447,24 @@ export default class MenuScene {
         weight: '600',
       });
 
-      drawText(ctx, card.detail, card.x + padX, card.y + card.h * 0.72, {
+      drawText(ctx, card.detail, card.x + padX, detailY, {
         size: detailSize,
         color: theme.color.muted,
         align: 'left',
         baseline: 'middle',
         font: theme.font.body,
       });
+
+      if (hasRecord) {
+        drawText(ctx, '★ ' + card.record, card.x + padX, card.y + card.h * 0.81, {
+          size: detailSize,
+          color: theme.color.accent,
+          align: 'left',
+          baseline: 'middle',
+          font: theme.font.body,
+          weight: '600',
+        });
+      }
 
       this.renderCardMark(ctx, game, iconX, iconY, accent, iconSize, iconRadius);
 
@@ -462,6 +483,9 @@ export default class MenuScene {
       const iconX = card.x + card.w - 68;
       const iconY = card.y + 34;
 
+      const labelY = card.y + 58;
+      const detailY = card.y + 86;
+
       drawText(ctx, String(displayIndex).padStart(2, '0'), card.x + 28, card.y + 32, {
         size: 13,
         color: theme.color.gold,
@@ -471,7 +495,7 @@ export default class MenuScene {
         weight: '600',
       });
 
-      drawText(ctx, card.label, card.x + 28, card.y + 68, {
+      drawText(ctx, card.label, card.x + 28, labelY, {
         size: 25,
         color: theme.color.ink,
         align: 'left',
@@ -480,13 +504,24 @@ export default class MenuScene {
         weight: '600',
       });
 
-      drawText(ctx, card.detail, card.x + 28, card.y + 98, {
+      drawText(ctx, card.detail, card.x + 28, detailY, {
         size: 13,
         color: theme.color.muted,
         align: 'left',
         baseline: 'middle',
         font: theme.font.body,
       });
+
+      if (hasRecord) {
+        drawText(ctx, '★ ' + card.record, card.x + 28, card.y + 110, {
+          size: 11,
+          color: theme.color.accent,
+          align: 'left',
+          baseline: 'middle',
+          font: theme.font.body,
+          weight: '600',
+        });
+      }
 
       this.renderCardMark(ctx, game, iconX, iconY, accent);
 

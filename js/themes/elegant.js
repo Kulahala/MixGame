@@ -1,7 +1,7 @@
 const elegantTheme = {
   font: {
-    title: 'Georgia, "Times New Roman", "PingFang SC", "Microsoft YaHei", serif',
-    body: '"PingFang SC", "Microsoft YaHei", sans-serif',
+    title: 'Georgia, "Times New Roman", "HarmonyOS Sans", "PingFang SC", "Microsoft YaHei", serif',
+    body: '"HarmonyOS Sans", "PingFang SC", "Microsoft YaHei", sans-serif',
   },
   color: {
     bg: '#f4f2ed',
