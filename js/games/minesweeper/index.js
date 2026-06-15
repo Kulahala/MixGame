@@ -161,17 +161,29 @@ export default class MinesweeperScene extends BaseGameScene {
   renderBoard(ctx) {
     const theme = this.theme;
     const { boardX, boardY, cellSize, state } = this;
-    const radius = Math.min(theme.radius.sm, cellSize * 0.3);
+    const radius = Math.min(theme.radius.sm, cellSize * 0.35);
+    const gap = 1.5;
 
+    // 1. 绘制棋盘底板 (略深于页面背景的暖米色，为方格边缘缝隙提供平滑自然的分界底色)
+    fillRoundRect(
+      ctx,
+      boardX - 2,
+      boardY - 2,
+      this.boardWidth + 4,
+      this.boardHeight + 4,
+      radius + 2,
+      theme.color.line
+    );
+
+    // 2. 绘制每个扫雷方格
     for (let r = 0; r < state.rows; r++) {
       for (let c = 0; c < state.cols; c++) {
         const cx = boardX + c * cellSize;
         const cy = boardY + r * cellSize;
-        const gap = 1;
 
         if (state.revealed[r][c]) {
-          // 已揭开
-          fillRoundRect(ctx, cx + gap, cy + gap, cellSize - gap * 2, cellSize - gap * 2, radius, theme.color.bg);
+          // 已揭开：暖灰底色（表现为凹陷沉底状态）
+          fillRoundRect(ctx, cx + gap, cy + gap, cellSize - gap * 2, cellSize - gap * 2, radius, theme.color.paperDeep);
 
           if (state.grid[r][c] === -1) {
             // 地雷：黑色圆点
@@ -189,8 +201,8 @@ export default class MinesweeperScene extends BaseGameScene {
             });
           }
         } else {
-          // 未揭开
-          fillRoundRect(ctx, cx + gap, cy + gap, cellSize - gap * 2, cellSize - gap * 2, radius, theme.color.paperDeep);
+          // 未揭开：纸白底色（表现为立体凸起状态）
+          fillRoundRect(ctx, cx + gap, cy + gap, cellSize - gap * 2, cellSize - gap * 2, radius, theme.color.paper);
 
           if (state.flagged[r][c]) {
             // 旗子标记
@@ -198,24 +210,6 @@ export default class MinesweeperScene extends BaseGameScene {
           }
         }
       }
-    }
-
-    // 网格边框（在格子间隙上画线形成整洁网格）
-    ctx.strokeStyle = theme.color.line;
-    ctx.lineWidth = 0.5;
-    for (let r = 0; r <= state.rows; r++) {
-      const y = boardY + r * cellSize;
-      ctx.beginPath();
-      ctx.moveTo(boardX, y);
-      ctx.lineTo(boardX + this.boardWidth, y);
-      ctx.stroke();
-    }
-    for (let c = 0; c <= state.cols; c++) {
-      const x = boardX + c * cellSize;
-      ctx.beginPath();
-      ctx.moveTo(x, boardY);
-      ctx.lineTo(x, boardY + this.boardHeight);
-      ctx.stroke();
     }
   }
 
