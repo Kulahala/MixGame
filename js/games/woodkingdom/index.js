@@ -1241,75 +1241,77 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     if (side === 'player') {
       // 1. Player: Little Squirrel
-      // Ears (outer accent color, inner sage color)
+      // Squirrel Face Head (圆心移到 y + 1，半径 9)
       ctx.fillStyle = theme.color.accent;
       ctx.beginPath();
-      ctx.moveTo(x - 12, y - 12);
-      ctx.lineTo(x - 16, y - 22);
-      ctx.lineTo(x - 6, y - 16);
+      ctx.arc(x, y + 1, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ears (outer accent color)
+      // 耳朵起点在头部两侧，向斜上方延伸
+      ctx.fillStyle = theme.color.accent;
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y - 4);
+      ctx.lineTo(x - 13, y - 14);
+      ctx.lineTo(x - 4, y - 7);
       ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(x + 12, y - 12);
-      ctx.lineTo(x + 16, y - 22);
-      ctx.lineTo(x + 6, y - 16);
+      ctx.moveTo(x + 8, y - 4);
+      ctx.lineTo(x + 13, y - 14);
+      ctx.lineTo(x + 4, y - 7);
       ctx.fill();
 
+      // Inner Ear (艾绿色)
       ctx.fillStyle = theme.color.sage;
       ctx.beginPath();
-      ctx.moveTo(x - 11, y - 13);
-      ctx.lineTo(x - 14, y - 19);
-      ctx.lineTo(x - 7, y - 15);
+      ctx.moveTo(x - 7, y - 5);
+      ctx.lineTo(x - 11, y - 12);
+      ctx.lineTo(x - 5, y - 7);
       ctx.fill();
 
       ctx.beginPath();
-      ctx.moveTo(x + 11, y - 13);
-      ctx.lineTo(x + 14, y - 19);
-      ctx.lineTo(x + 7, y - 15);
+      ctx.moveTo(x + 7, y - 5);
+      ctx.lineTo(x + 11, y - 12);
+      ctx.lineTo(x + 5, y - 7);
       ctx.fill();
 
-      // Squirrel Face Head
-      ctx.fillStyle = theme.color.accent;
-      ctx.beginPath();
-      ctx.arc(x, y + 2, 10, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Muzzle area
+      // Muzzle area (嘴部区域移到 y + 4，半径 5)
       ctx.fillStyle = theme.color.line;
       ctx.beginPath();
-      ctx.arc(x, y + 6, 6, 0, Math.PI * 2);
+      ctx.arc(x, y + 4, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Bead Eyes
+      // Bead Eyes (眼珠移到 y - 1)
       ctx.fillStyle = theme.color.ink;
       ctx.beginPath();
-      ctx.arc(x - 4, y, 1.5, 0, Math.PI * 2);
-      ctx.arc(x + 4, y, 1.5, 0, Math.PI * 2);
+      ctx.arc(x - 3.5, y - 1, 1.2, 0, Math.PI * 2);
+      ctx.arc(x + 3.5, y - 1, 1.2, 0, Math.PI * 2);
       ctx.fill();
 
-      // Cheeks blush
+      // Cheeks blush (腮红移到 y + 2.5)
       ctx.fillStyle = theme.color.danger;
       ctx.globalAlpha = 0.5;
       ctx.beginPath();
-      ctx.arc(x - 6, y + 4, 1.8, 0, Math.PI * 2);
-      ctx.arc(x + 6, y + 4, 1.8, 0, Math.PI * 2);
+      ctx.arc(x - 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
+      ctx.arc(x + 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1.0;
 
-      // Small nose
+      // Small nose (鼻子移到 y + 2.5 到 y + 4 之间)
       ctx.fillStyle = theme.color.ink;
       ctx.beginPath();
-      ctx.moveTo(x - 2, y + 4);
-      ctx.lineTo(x + 2, y + 4);
-      ctx.lineTo(x, y + 6);
+      ctx.moveTo(x - 1.5, y + 2.5);
+      ctx.lineTo(x + 1.5, y + 2.5);
+      ctx.lineTo(x, y + 4);
       ctx.fill();
 
-      // Cute small green hat
+      // Cute small green hat (帽子戴在头顶，紧贴 y-8 的头顶)
       ctx.fillStyle = theme.color.sage;
       ctx.beginPath();
-      ctx.arc(x, y - 6, 6, Math.PI, 0);
+      ctx.arc(x, y - 7, 5.5, Math.PI, 0);
       ctx.fill();
-      ctx.fillRect(x - 7, y - 6, 14, 2);
+      ctx.fillRect(x - 6.5, y - 7, 13, 2);
     } else {
       // 2. Opponent boss types
       const level = this.level || 1;

@@ -90,11 +90,11 @@ export default class SudokuScene extends BaseGameScene {
       y: this.actionBtnY,
       w: 74,
       h: 36,
-      label: '笔记',
+      label: '标记',
       variant: 'ghost',
       onClick: () => {
         const isNote = this.state.toggleNoteMode();
-        this.noteButton.label = isNote ? '笔记: 开' : '笔记';
+        this.noteButton.label = isNote ? '标记: 开' : '标记';
         this.noteButton.variant = isNote ? 'secondary' : 'ghost';
       },
     });
@@ -106,7 +106,7 @@ export default class SudokuScene extends BaseGameScene {
     this.state = new SudokuBoardState(this.state.initialPuzzle, this.state.solution);
     this.selected = { row: 0, col: 2 };
     this.pressedKey = 0;
-    this.noteButton.label = '笔记';
+    this.noteButton.label = '标记';
     this.noteButton.variant = 'ghost';
     this.closeModal();
     this.bottomQuote = getRandomQuote('sudoku');

@@ -101,7 +101,7 @@ export default class MinesweeperScene extends BaseGameScene {
         this.showResult('恭喜通关！', [
           `用时 ${this.state.getElapsed()}s`,
           `步数 ${this.state.steps} 步`,
-          `剩余雷数 ${this.state.totalMines - this.state.getFlagCount()}`,
+          `已标记数 ${this.state.getFlagCount()}`,
         ], true, history);
       } else {
         this.showResult('踩雷了！', [
@@ -133,7 +133,7 @@ export default class MinesweeperScene extends BaseGameScene {
     const width = this.host.width;
     const height = this.host.height;
     const isTablet = width >= 500 && height >= 600 && height >= width;
-    const remaining = this.state.totalMines - this.state.getFlagCount();
+    const flagged = this.state.getFlagCount();
 
     const titleY = safeTop + (isTablet ? 110 : 90);
     const statsY = safeTop + (isTablet ? 140 : 116);
@@ -147,7 +147,7 @@ export default class MinesweeperScene extends BaseGameScene {
       weight: '600',
     });
 
-    drawText(ctx, `剩余 ${remaining} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, statsY, {
+    drawText(ctx, `已标记 ${flagged} · 用时 ${this.state.getElapsed()}s`, this.host.width / 2, statsY, {
       size: 13,
       color: theme.color.muted,
       align: 'center',
