@@ -240,7 +240,7 @@ export default class MenuScene {
     const theme = this.theme;
 
     // 进场动画曲线：easeOutQuart (比线性更具阻尼感，快速冲入然后平滑减速)
-    const progress = Math.min(1, this.host.sceneAge / 360);
+    const progress = Math.min(1, this.host.sceneAge / 200);
     const ease = 1 - Math.pow(1 - progress, 4);
     const reveal = ease;
 
