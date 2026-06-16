@@ -258,7 +258,9 @@ export default class SlitherlinkState {
   saveResult() {
     if (this.saved) return;
     const time = this.getElapsed();
-    const score = Math.max(100, 1000 - time * 2 - this.steps * 5);
+    let base = 1000;
+    if (this.rows === 7) base = 3000;
+    const score = Math.max(100, base - time * 2 - this.steps * 5);
     saveScore('slitherlink', {
       score,
       time,

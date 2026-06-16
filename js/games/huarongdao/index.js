@@ -103,8 +103,8 @@ export default class HuarongdaoScene extends BaseGameScene {
       this.state.completed = true;
       this.state.saveResult();
       const currentScore = this.state.getScore();
-      const history = getHistory('huarongdao').map((h) => ({
-        label: `${h.steps}步 · ${h.time}s`,
+      const history = getHistory('huarongdao', `${this.state.size}x${this.state.size}`).map((h) => ({
+        label: `${h.score}分 · ${h.steps}步`,
         highlight: h.score === currentScore,
       }));
       this.showResult('恭喜通关！', [

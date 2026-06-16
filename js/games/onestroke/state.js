@@ -215,7 +215,10 @@ export class OneStrokeState {
   saveResult() {
     if (this.saved) return;
     const time = this.getElapsed();
-    const score = Math.max(100, 1000 - time * 2 - this.steps * 3);
+    let base = 1000;
+    if (this.size === 5) base = 2000;
+    if (this.size === 6) base = 3000;
+    const score = Math.max(100, base - time * 2 - this.steps * 3);
     saveScore('onestroke', {
       score,
       time,

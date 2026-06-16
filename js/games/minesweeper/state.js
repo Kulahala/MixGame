@@ -149,7 +149,11 @@ export default class MinesweeperState {
   }
 
   getScore() {
-    return this.won ? Math.max(100, 1000 - this.getElapsed() * 2 - this.steps) : 0;
+    if (!this.won) return 0;
+    let base = 1000;
+    if (this.rows === 12 && this.cols === 12) base = 3000;
+    if (this.rows === 12 && this.cols === 16) base = 5000;
+    return Math.max(100, base - this.getElapsed() * 2 - this.steps);
   }
 
   saveResult() {

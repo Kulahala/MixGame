@@ -137,7 +137,7 @@ export default class MinesweeperScene extends BaseGameScene {
       this.resultShown = true;
       if (this.state.won) {
         const currentScore = this.state.getScore();
-        const history = getHistory('minesweeper').map((h) => ({
+        const history = getHistory('minesweeper', `${this.state.rows}x${this.state.cols}`).map((h) => ({
           label: `${h.score}分 · ${h.time}s`,
           highlight: h.score === currentScore,
         }));

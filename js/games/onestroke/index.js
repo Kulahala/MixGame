@@ -95,7 +95,7 @@ export default class OneStrokeScene extends BaseGameScene {
         `难度：${this.state.size}x${this.state.size}`
       ];
 
-      const history = getHistory('onestroke').map(h => ({
+      const history = getHistory('onestroke', `${this.state.size}x${this.state.size}`).map(h => ({
         label: `${h.score}分 · ${h.time}s`,
         highlight: h.score === currentScore
       }));

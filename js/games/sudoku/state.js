@@ -5,9 +5,10 @@ function cloneGrid(grid) {
 }
 
 export default class SudokuBoardState {
-  constructor(initialPuzzle, solution) {
+  constructor(initialPuzzle, solution, difficulty = '简单') {
     this.initialPuzzle = initialPuzzle;
     this.solution = solution;
+    this.difficulty = difficulty;
     
     this.board = cloneGrid(initialPuzzle);
     this.mistakeMap = initialPuzzle.map((row) => row.map(() => false));
@@ -132,7 +133,10 @@ export default class SudokuBoardState {
 
   getScore() {
     const timeSpent = this.getTimeSpent();
-    return Math.max(0, 10000 - timeSpent * 10 - this.fills * 20);
+    let base = 10000;
+    if (this.difficulty === '普通') base = 20000;
+    if (this.difficulty === '困难') base = 30000;
+    return Math.max(0, base - timeSpent * 10 - this.fills * 20);
   }
 
   saveResult() {
@@ -143,7 +147,8 @@ export default class SudokuBoardState {
     saveScore('sudoku', { 
       score, 
       time: timeSpent, 
-      mistakes: this.mistakes 
+      mistakes: this.mistakes,
+      difficulty: this.difficulty
     });
   }
 

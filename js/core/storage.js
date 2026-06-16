@@ -90,7 +90,7 @@ export function saveScore(gameId, result) {
     next.bestLevelId = result.levelId || '';
   }
 
-  // ── History (最多 3 条，按 score 降序，woodkingdom 按 time 升序) ───────────────
+  // ── History (按难度分组，每个难度最多保留 3 条) ──────────────────────────
   const history = (current.history || []).slice();
   if (result.won !== false) {
     const entry = {};
@@ -98,12 +98,25 @@ export function saveScore(gameId, result) {
       if (result[key] !== undefined) entry[key] = result[key];
     }
     history.push(entry);
-    if (gameId === 'woodkingdom') {
-      history.sort((a, b) => (a.time || 0) - (b.time || 0));
-    } else {
-      history.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    // 按难度进行分组和排序裁剪
+    const groups = {};
+    for (const item of history) {
+      const diff = item.difficulty || 'easy';
+      if (!groups[diff]) groups[diff] = [];
+      groups[diff].push(item);
     }
-    next.history = history.slice(0, 3);
+
+    const nextHistory = [];
+    for (const diff in groups) {
+      if (gameId === 'woodkingdom') {
+        groups[diff].sort((a, b) => (a.time || 0) - (b.time || 0));
+      } else {
+        groups[diff].sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+      nextHistory.push(...groups[diff].slice(0, 3));
+    }
+    next.history = nextHistory;
   } else {
     next.history = history;
   }
@@ -119,9 +132,18 @@ export function saveScore(gameId, result) {
   return scores;
 }
 
-export function getHistory(gameId) {
+export function getHistory(gameId, difficulty) {
   const scores = getScores();
   const current = scores[gameId];
   if (!current || !Array.isArray(current.history)) return [];
-  return current.history.slice(0, 3);
+  let list = current.history;
+  if (difficulty) {
+    list = list.filter(h => h.difficulty === difficulty);
+  }
+  if (gameId === 'woodkingdom') {
+    list.sort((a, b) => (a.time || 0) - (b.time || 0));
+  } else {
+    list.sort((a, b) => (b.score || 0) - (a.score || 0));
+  }
+  return list.slice(0, 3);
 }

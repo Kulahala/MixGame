@@ -47,7 +47,7 @@ export default class SlitherlinkScene extends BaseGameScene {
 
       const time = this.state.getElapsed();
       const currentScore = Math.max(100, 1000 - time * 2 - this.state.steps * 5);
-      const history = getHistory('slitherlink').map(h => ({
+      const history = getHistory('slitherlink', `${this.state.rows}x${this.state.cols}`).map(h => ({
         label: `${h.score}分 · ${h.time}s`,
         highlight: h.score === currentScore
       }));

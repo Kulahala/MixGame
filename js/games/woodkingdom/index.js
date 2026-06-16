@@ -151,7 +151,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       this.level = progress.level || 1;
       this.campaignStartTime = progress.startTime || Date.now();
       this.campaignDeck = progress.deck || [
-        'sapling', 'sapling', 'bird', 'oak',
+        'sapling', 'baby_owl', 'bird', 'oak',
         'bifurcated_pine', 'deathtouch_mushroom',
         'nut_shield', 'grove_guardian'
       ];
@@ -159,7 +159,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       this.level = 1;
       this.campaignStartTime = Date.now();
       this.campaignDeck = [
-        'sapling', 'sapling', 'bird', 'oak',
+        'sapling', 'baby_owl', 'bird', 'oak',
         'bifurcated_pine', 'deathtouch_mushroom',
         'nut_shield', 'grove_guardian'
       ];
@@ -319,10 +319,26 @@ export default class WoodKingdomScene extends BaseGameScene {
       if (slots[anim.slotIndex]) {
         slots[anim.slotIndex].shieldActive = false;
       }
-    } else if (anim.type === 'deathtouch_trigger') {
+    } else if (anim.type === 'sleepTouch_trigger') {
       const slotX = this.gridX + anim.slotIndex * (this.slotWidth + this.gap) + this.slotWidth / 2;
       const slotY = (anim.side === 'player' ? this.gridY + 2 * (this.slotHeight + this.gridRowGap) : this.gridY + this.slotHeight + this.gridRowGap) + this.slotHeight / 2;
-      this.spawnFloatingText('剧毒致命！', slotX, slotY, theme.color.danger);
+      this.spawnFloatingText('催眠沉睡', slotX, slotY, theme.color.blue);
+    } else if (anim.type === 'sleep_skip') {
+      const slotX = this.gridX + anim.slotIndex * (this.slotWidth + this.gap) + this.slotWidth / 2;
+      const slotY = (anim.side === 'player' ? this.gridY + 2 * (this.slotHeight + this.gridRowGap) : this.gridY + this.slotHeight + this.gridRowGap) + this.slotHeight / 2;
+      this.spawnFloatingText('沉睡中', slotX, slotY - 20, theme.color.blue);
+    } else if (anim.type === 'fledgling_evolve') {
+      const slots = anim.side === 'player' ? this.visualPlayerSlots : this.visualOpponentSlots;
+      if (slots[anim.slotIndex]) {
+        slots[anim.slotIndex] = { ...anim.card };
+      }
+      const slotX = this.gridX + anim.slotIndex * (this.slotWidth + this.gap) + this.slotWidth / 2;
+      const slotY = (anim.side === 'player' ? this.gridY + 2 * (this.slotHeight + this.gridRowGap) : this.gridY + this.slotHeight + this.gridRowGap) + this.slotHeight / 2;
+      this.spawnFloatingText('进化！', slotX, slotY - 20, theme.color.gold);
+    } else if (anim.type === 'unkillable_trigger') {
+      const slotX = this.gridX + anim.slotIndex * (this.slotWidth + this.gap) + this.slotWidth / 2;
+      const slotY = (anim.side === 'player' ? this.gridY + 2 * (this.slotHeight + this.gridRowGap) : this.gridY + this.slotHeight + this.gridRowGap) + this.slotHeight / 2;
+      this.spawnFloatingText('不朽回手', slotX, slotY - 10, theme.color.gold);
     } else if (anim.type === 'card_death') {
       const slotX = this.gridX + anim.slotIndex * (this.slotWidth + this.gap) + this.slotWidth / 2;
       const slotY = (anim.side === 'player' ? this.gridY + 2 * (this.slotHeight + this.gridRowGap) : this.gridY + this.slotHeight + this.gridRowGap) + this.slotHeight / 2;
@@ -353,8 +369,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       }
     } else if (anim.type === 'resource_gain') {
       this.visualResources[anim.resource] += anim.amount;
-      const resIdx = anim.resource === 'raindrop' ? 0 : anim.resource === 'wood' ? 1 : anim.resource === 'acorn' ? 2 : 3;
-      const resX = this.host.width / 2 - 120 + resIdx * 75;
+      const resX = anim.resource === 'dewdrop' ? (this.host.width / 2 - 70) : (this.host.width / 2 + 20);
       this.spawnFloatingText(`+${anim.amount}`, resX, this.drawY - 20, theme.color.sage);
     }
   }
@@ -365,9 +380,9 @@ export default class WoodKingdomScene extends BaseGameScene {
       if (status.won) {
         if (this.state.level === 3) {
           const elapsed = Math.floor((Date.now() - this.campaignStartTime) / 1000);
-          saveScore('woodkingdom', { score: 100, time: elapsed, won: true });
+          saveScore('woodkingdom', { score: 100, time: elapsed, won: true, difficulty: '战役' });
           this.clearCampaignProgress(); // Campaign complete: clear progress
-          const history = getHistory('woodkingdom').map(h => ({
+          const history = getHistory('woodkingdom', '战役').map(h => ({
             label: `${h.time}s`,
             highlight: h.time === elapsed
           }));
@@ -377,7 +392,7 @@ export default class WoodKingdomScene extends BaseGameScene {
           ], true, history);
         } else {
           // Card choice reward
-          const pool = ['oak', 'bird', 'bifurcated_pine', 'deathtouch_mushroom', 'nut_shield', 'grove_guardian'];
+          const pool = ['oak', 'bird', 'bifurcated_pine', 'deathtouch_mushroom', 'nut_shield', 'grove_guardian', 'moss_turtle', 'elder_deer', 'baby_owl'];
           for (let i = pool.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -595,8 +610,11 @@ export default class WoodKingdomScene extends BaseGameScene {
       const sigilNames = card.sigils.map(s => {
         if (s === 'airborne') return '飞行';
         if (s === 'bifurcated') return '分叉';
-        if (s === 'deathtouch') return '剧毒';
+        if (s === 'sleepTouch') return '催眠';
         if (s === 'shield') return '护盾';
+        if (s === 'unkillable') return '不朽';
+        if (s === 'leader') return '领袖';
+        if (s === 'fledgling') return '雏鸟';
         return s;
       }).join(' ');
 
@@ -637,10 +655,8 @@ export default class WoodKingdomScene extends BaseGameScene {
     // Cost
     let costStr = '';
     const cost = card.cost || {};
-    if (cost.raindrop > 0) costStr += `💧${cost.raindrop}`;
-    if (cost.wood > 0) costStr += `🪵${cost.wood}`;
-    if (cost.acorn > 0) costStr += `🌰${cost.acorn}`;
-    if (cost.leaves > 0) costStr += `🍃${cost.leaves}`;
+    if (cost.dewdrop > 0) costStr += `💧${cost.dewdrop}`;
+    if (cost.leaf > 0) costStr += `🍂${cost.leaf}`;
     if (!costStr) costStr = '免费';
 
     drawText(ctx, costStr, x + w / 2, y + 38, {
@@ -656,8 +672,11 @@ export default class WoodKingdomScene extends BaseGameScene {
       const sigilsText = card.sigils.map(s => {
         if (s === 'airborne') return '飞行';
         if (s === 'bifurcated') return '分叉';
-        if (s === 'deathtouch') return '剧毒';
+        if (s === 'sleepTouch') return '催眠';
         if (s === 'shield') return '护盾';
+        if (s === 'unkillable') return '不朽';
+        if (s === 'leader') return '领袖';
+        if (s === 'fledgling') return '雏鸟';
         return s;
       }).join(' ');
 
@@ -704,40 +723,22 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     // Draw resources bar (just above draw piles)
     const resY = this.drawY - 20;
-    const rx1 = width / 2 - 120;
-    const rx2 = width / 2 - 45;
-    const rx3 = width / 2 + 30;
-    const rx4 = width / 2 + 105;
+    const rx1 = width / 2 - 80;
+    const rx2 = width / 2 + 10;
 
     ctx.fillStyle = theme.color.blue;
     ctx.beginPath();
     ctx.arc(rx1, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `雨露:${this.visualResources.raindrop}`, rx1 + 10, resY, {
-      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
-    });
-
-    ctx.fillStyle = theme.color.accent;
-    ctx.beginPath();
-    ctx.arc(rx2, resY, 5, 0, Math.PI * 2);
-    ctx.fill();
-    drawText(ctx, `木材:${this.visualResources.wood}`, rx2 + 10, resY, {
-      size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
-    });
-
-    ctx.fillStyle = theme.color.gold;
-    ctx.beginPath();
-    ctx.arc(rx3, resY, 5, 0, Math.PI * 2);
-    ctx.fill();
-    drawText(ctx, `橡果:${this.visualResources.acorn}`, rx3 + 10, resY, {
+    drawText(ctx, `露珠:${this.visualResources.dewdrop}`, rx1 + 10, resY, {
       size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
     ctx.fillStyle = theme.color.sage;
     ctx.beginPath();
-    ctx.arc(rx4, resY, 5, 0, Math.PI * 2);
+    ctx.arc(rx2, resY, 5, 0, Math.PI * 2);
     ctx.fill();
-    drawText(ctx, `树叶:${this.visualResources.leaves}`, rx4 + 10, resY, {
+    drawText(ctx, `落叶:${this.visualResources.leaf}`, rx2 + 10, resY, {
       size: 11, color: theme.color.ink, align: 'left', baseline: 'middle', font: theme.font.body
     });
 
@@ -848,8 +849,8 @@ export default class WoodKingdomScene extends BaseGameScene {
           const btnSize = 18;
           const bx = slotX + this.slotWidth - btnSize - 3;
           const by = slotY + 3;
-          fillRoundRect(ctx, bx, by, btnSize, btnSize, 4, theme.color.danger);
-          drawText(ctx, '祭', bx + btnSize / 2, by + btnSize / 2 + 1, {
+          fillRoundRect(ctx, bx, by, btnSize, btnSize, 4, theme.color.accent);
+          drawText(ctx, '归', bx + btnSize / 2, by + btnSize / 2 + 1, {
             size: 10,
             color: theme.color.paper,
             align: 'center',
@@ -1073,7 +1074,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       return;
     }
 
-    // 2. Click Sacrifice (祭) Button on player cards
+    // 2. Click Release (归) Button on player cards
     for (let i = 0; i < 4; i++) {
       const card = this.state.playerSlots[i];
       if (card) {
@@ -1085,16 +1086,14 @@ export default class WoodKingdomScene extends BaseGameScene {
 
         if (point.x >= bx && point.x <= bx + btnSize && point.y >= by && point.y <= by + btnSize) {
           try {
-            const res = this.state.sacrificeCard(i);
+            const res = this.state.releaseCard(i);
             this.syncVisualsWithState();
-            this.spawnFloatingText('祭献', slotX + this.slotWidth / 2, slotY + this.slotHeight / 2, theme.color.danger);
+            this.spawnFloatingText('放归', slotX + this.slotWidth / 2, slotY + this.slotHeight / 2, theme.color.danger);
 
             const gained = res.gained;
             let gainStr = '';
-            if (gained.raindrop > 0) gainStr += `💧+${gained.raindrop} `;
-            if (gained.wood > 0) gainStr += `🪵+${gained.wood} `;
-            if (gained.acorn > 0) gainStr += `🌰+${gained.acorn} `;
-            if (gained.leaves > 0) gainStr += `🍃+${gained.leaves} `;
+            if (gained.dewdrop > 0) gainStr += `💧+${gained.dewdrop} `;
+            if (gained.leaf > 0) gainStr += `🍂+${gained.leaf} `;
             if (gainStr) {
               this.spawnFloatingText(gainStr, slotX + this.slotWidth / 2, slotY - 15, theme.color.sage);
             }

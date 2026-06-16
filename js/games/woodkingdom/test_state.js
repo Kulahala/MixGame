@@ -14,15 +14,15 @@ function runTest(name, fn) {
 
 console.log('Running Wood Kingdom State Engine Unit Tests...\n');
 
-// 1. Test Card Playing, Sacrificing, and Drawing
-runTest('Playing, sacrificing, and drawing cards', () => {
+// 1. Test Card Playing, Releasing, and Drawing
+runTest('Playing, releasing, and drawing cards', () => {
   const state = new WoodKingdomState(1);
   
   // Test initial setup
   assert.strictEqual(state.playerSlots.every(s => s === null), true);
   assert.strictEqual(state.opponentSlots.every(s => s === null), true);
-  assert.strictEqual(state.resources.raindrop, 0);
-  assert.strictEqual(state.resources.wood, 0);
+  assert.strictEqual(state.resources.dewdrop, 0);
+  assert.strictEqual(state.resources.leaf, 0);
   
   // Draw basic resource cards
   const squirrel = state.drawCard('squirrel');
@@ -38,22 +38,22 @@ runTest('Playing, sacrificing, and drawing cards', () => {
   assert.strictEqual(state.playerSlots[0].id, 'squirrel');
   assert.strictEqual(state.hand.includes(squirrel), false);
 
-  // Sacrifice squirrel at slot 0
-  const sacResult = state.sacrificeCard(0);
+  // Release squirrel at slot 0 (was sacrificeCard)
+  const relResult = state.releaseCard(0);
   assert.strictEqual(state.playerSlots[0], null);
-  assert.strictEqual(sacResult.card.id, 'squirrel');
-  assert.strictEqual(state.resources.wood, 1);
-  assert.strictEqual(state.resources.raindrop, 0);
+  assert.strictEqual(relResult.card.id, 'squirrel');
+  assert.strictEqual(state.resources.dewdrop, 1);
+  assert.strictEqual(state.resources.leaf, 1); // Release also gains leaf as leaveReward
 
   // Play sprout to slot 1
   state.playCard('sprout', 1);
   assert.strictEqual(state.playerSlots[1].id, 'sprout');
   
-  // Sacrifice sprout at slot 1
-  state.sacrificeCard(1);
+  // Release sprout at slot 1
+  state.releaseCard(1);
   assert.strictEqual(state.playerSlots[1], null);
-  assert.strictEqual(state.resources.raindrop, 1);
-  assert.strictEqual(state.resources.wood, 1);
+  assert.strictEqual(state.resources.dewdrop, 2);
+  assert.strictEqual(state.resources.leaf, 2);
 });
 
 // 2. Test Resource Updates and Playing Costly Cards
@@ -61,32 +61,45 @@ runTest('Resource updates and playing costs', () => {
   const state = new WoodKingdomState(1);
   
   // Add resources manually to check costs
-  state.resources.raindrop = 1;
-  state.resources.wood = 2;
+  state.resources.dewdrop = 1;
+  state.resources.leaf = 2;
   
-  // Find a sapling in hand or deck, add it to hand
+  // Create a sapling (costs 1 dewdrop)
   const sapling = state.createCard('sapling');
   state.hand.push(sapling);
 
-  // Play sapling (costs 1 raindrop)
+  // Play sapling
   state.playCard(sapling.instanceId, 0);
   assert.strictEqual(state.playerSlots[0].instanceId, sapling.instanceId);
-  assert.strictEqual(state.resources.raindrop, 0);
-  assert.strictEqual(state.resources.wood, 2);
+  assert.strictEqual(state.resources.dewdrop, 0);
+  assert.strictEqual(state.resources.leaf, 2);
 
-  // Try to play oak (costs 2 wood)
+  // Try to play oak (costs 2 dewdrop) -> should fail
   const oak = state.createCard('oak');
   state.hand.push(oak);
+  assert.throws(() => {
+    state.playCard(oak.instanceId, 1);
+  }, /Not enough resources/);
+
+  // Add more resources
+  state.resources.dewdrop = 2;
   state.playCard(oak.instanceId, 1);
   assert.strictEqual(state.playerSlots[1].instanceId, oak.instanceId);
-  assert.strictEqual(state.resources.wood, 0);
+  assert.strictEqual(state.resources.dewdrop, 0);
 
-  // Verify failure when playing without enough resources
-  const bird = state.createCard('bird'); // costs 1 raindrop
-  state.hand.push(bird);
+  // Try to play deathtouch_mushroom (costs 1 dewdrop, 1 leaf)
+  const mushroom = state.createCard('deathtouch_mushroom');
+  state.hand.push(mushroom);
   assert.throws(() => {
-    state.playCard(bird.instanceId, 2);
+    state.playCard(mushroom.instanceId, 2);
   }, /Not enough resources/);
+
+  state.resources.dewdrop = 1;
+  state.resources.leaf = 1;
+  state.playCard(mushroom.instanceId, 2);
+  assert.strictEqual(state.playerSlots[2].instanceId, mushroom.instanceId);
+  assert.strictEqual(state.resources.dewdrop, 0);
+  assert.strictEqual(state.resources.leaf, 0);
 });
 
 // 3. Test Airborne Sigil
@@ -141,7 +154,6 @@ runTest('Bifurcated Sigil (diagonal attacks)', () => {
   assert.strictEqual(opponentShield0.hp, 3);
   assert.strictEqual(opponentShield2.hp, 3);
   // Direct scale tilt should be 0 because both target slots were blocked by cards
-  // and opponent cards have 0 attack so no counterattack
   assert.strictEqual(state.scaleTilt, 0);
 
   // Now clear slot 2 and attack again
@@ -155,30 +167,39 @@ runTest('Bifurcated Sigil (diagonal attacks)', () => {
   assert.strictEqual(state.scaleTilt, 1);
 });
 
-// 5. Test Deathtouch Sigil & Card Destruction Resources
-runTest('Deathtouch Sigil and destruction resource gains', () => {
+// 5. Test sleepTouch Sigil (formerly deathtouch, now sleeping mechanism)
+runTest('sleepTouch Sigil (sleeping and skipping attacks)', () => {
   const state = new WoodKingdomState(1);
   state.opponentQueue.fill(null);
   state.runOpponentAI = () => {};
 
-  // Player mushroom (deathtouch, attack 1) in slot 0
+  // Player mushroom (sleepTouch, attack 1) in slot 0
   const mushroom = state.createCard('deathtouch_mushroom');
   state.playerSlots[0] = mushroom;
 
-  // Opponent oak (HP 5) in slot 0
+  // Opponent oak (HP 5, attack 1) in slot 0
   const oak = state.createCard('oak');
   state.opponentSlots[0] = oak;
 
-  assert.strictEqual(state.resources.leaves, 0);
+  assert.strictEqual(state.resources.leaf, 0);
 
+  // Turn 1 resolve: mushroom attacks oak. Oak takes 1 damage, gains sleeping: true.
+  // Then Oak's turn to attack. Since sleeping: true, Oak skips attack and wakes up (sleeping: false).
+  // Thus scaleTilt should remain 0 (neither side successfully deals unblocked direct damage).
   state.resolveTurn();
 
-  // Oak HP should instantly become 0 and slot 0 should be cleared
-  assert.strictEqual(state.opponentSlots[0], null);
-  // Player should receive 1 Leaves (since opponent card was destroyed)
-  // Let's verify our custom resource rules: oak has deathReward.leaves which defaults to 1 if not specified,
-  // or +1 Leaves because it's an opponent card. Let's make sure it's at least 1.
-  assert.ok(state.resources.leaves >= 1);
+  assert.strictEqual(oak.hp, 4); // Oak took 1 damage
+  assert.strictEqual(oak.sleeping, false); // Oak woke up
+  assert.strictEqual(state.scaleTilt, 0); // Oak skipped attack, so scaleTilt is 0
+
+  // Remove player mushroom so we don't apply sleeping next turn
+  state.playerSlots[0] = null;
+
+  // Turn 2 resolve: Oak should attack normally since it's awake
+  state.resolveTurn();
+
+  assert.strictEqual(oak.hp, 4); // HP unchanged
+  assert.strictEqual(state.scaleTilt, -1); // Oak hit scale directly (scaleTilt - 1)
 });
 
 // 6. Test Shield Sigil
@@ -220,7 +241,7 @@ runTest('Scale tilt win and loss conditions', () => {
   const bird = state.createCard('bird'); // attack 1
   state.playerSlots[0] = bird;
   
-  let log = state.resolveTurn();
+  state.resolveTurn();
   assert.strictEqual(state.scaleTilt, 5);
   assert.strictEqual(state.isGameOver().finished, true);
   assert.strictEqual(state.isGameOver().won, true);
@@ -266,6 +287,84 @@ runTest('Opponent queue placement and advancement', () => {
   // frontline slot 1 remains sapling, queue slot 1 remains squirrel
   assert.strictEqual(state.opponentSlots[1].instanceId, sapling.instanceId);
   assert.strictEqual(state.opponentQueue[1].instanceId, squirrel.instanceId);
+});
+
+// 9. Test Leader Sigil
+runTest('Leader Sigil (adds attack to adjacent allies)', () => {
+  const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
+  state.runOpponentAI = () => {};
+
+  // Place leader card in slot 1 (attack 2)
+  const leaderDeer = state.createCard('elder_deer');
+  state.playerSlots[1] = leaderDeer;
+
+  // Place normal card in slot 0 (attack 1)
+  const normalSapling = state.createCard('sapling');
+  state.playerSlots[0] = normalSapling;
+
+  // Resolve turn. Slots: [sapling (Leader-boosted), elder_deer (Leader), null, null]
+  // sapling attack: 1 + 1 (from elder_deer) = 2.
+  // elder_deer attack: 2.
+  // Total damage to scale: 4.
+  state.resolveTurn();
+
+  assert.strictEqual(state.scaleTilt, 4);
+});
+
+// 10. Test Unkillable Sigil
+runTest('Unkillable Sigil (return to hand on death or release)', () => {
+  // Test 10.1: Return to hand on release
+  const state1 = new WoodKingdomState(1);
+  state1.hand = [];
+  const turtle = state1.createCard('moss_turtle'); // unkillable
+  state1.playerSlots[0] = turtle;
+  
+  state1.releaseCard(0);
+  assert.strictEqual(state1.playerSlots[0], null);
+  assert.strictEqual(state1.hand.length, 1);
+  assert.strictEqual(state1.hand[0].id, 'moss_turtle');
+
+  // Test 10.2: Return to hand on combat death
+  const state2 = new WoodKingdomState(1);
+  state2.opponentQueue.fill(null);
+  state2.runOpponentAI = () => {};
+  state2.hand = [];
+
+  const turtle2 = state2.createCard('moss_turtle');
+  turtle2.hp = 1; // set HP to 1 so it dies in one hit
+  state2.playerSlots[0] = turtle2;
+
+  const opponentGuardian = state2.createCard('grove_guardian'); // 2 attack
+  state2.opponentSlots[0] = opponentGuardian;
+
+  state2.resolveTurn();
+  
+  assert.strictEqual(state2.playerSlots[0], null); // should die and be removed
+  assert.strictEqual(state2.hand.length, 1); // should be returned to hand
+  assert.strictEqual(state2.hand[0].id, 'moss_turtle');
+  assert.strictEqual(state2.hand[0].hp, 3); // hp reset to maxHp
+});
+
+// 11. Test Fledgling Sigil
+runTest('Fledgling Sigil (evolve after surviving one turn)', () => {
+  const state = new WoodKingdomState(1);
+  state.opponentQueue.fill(null);
+  state.runOpponentAI = () => {};
+
+  const owl = state.createCard('baby_owl'); // 1/1, fledgling
+  state.playerSlots[0] = owl;
+
+  // After 1 turn resolution, baby_owl should evolve
+  state.resolveTurn();
+
+  const evolvedOwl = state.playerSlots[0];
+  assert.strictEqual(evolvedOwl.id, 'baby_owl');
+  assert.strictEqual(evolvedOwl.attack, 2); // 1 + 1
+  assert.strictEqual(evolvedOwl.hp, 3); // 1 + 2
+  assert.strictEqual(evolvedOwl.maxHp, 3);
+  assert.strictEqual(evolvedOwl.sigils.includes('fledgling'), false); // fledgling removed
+  assert.strictEqual(evolvedOwl.sigils.includes('airborne'), true); // airborne added
 });
 
 console.log('\nAll Wood Kingdom State Engine Unit Tests Passed successfully!');

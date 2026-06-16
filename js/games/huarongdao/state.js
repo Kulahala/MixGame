@@ -107,7 +107,10 @@ export default class HuarongdaoState {
   }
 
   getScore() {
-    return Math.max(100, 1000 - this.getElapsed() * 2 - this.steps * 10);
+    let base = 1000;
+    if (this.size === 4) base = 3000;
+    if (this.size === 5) base = 5000;
+    return Math.max(100, base - this.getElapsed() * 2 - this.steps * 10);
   }
 
   saveResult() {

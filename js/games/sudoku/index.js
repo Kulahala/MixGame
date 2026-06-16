@@ -12,16 +12,12 @@ export default class SudokuScene extends BaseGameScene {
     super(host, options);
 
     let initialPuzzle, solution;
-    if (options.holes) {
-      const generated = generateSudoku(options.holes);
-      initialPuzzle = generated.puzzle;
-      solution = generated.solution;
-    } else {
-      initialPuzzle = PUZZLE;
-      solution = SOLUTION;
-    }
+    const holes = options.holes || 20;
+    let diffLabel = '简单';
+    if (holes === 40) diffLabel = '普通';
+    if (holes === 55) diffLabel = '困难';
 
-    this.state = new SudokuBoardState(initialPuzzle, solution);
+    this.state = new SudokuBoardState(initialPuzzle, solution, diffLabel);
     this.selected = { row: 0, col: 2 };
     this.pressedKey = 0;
     this.keyPressTimer = null;
@@ -118,7 +114,7 @@ export default class SudokuScene extends BaseGameScene {
   }
 
   reset() {
-    this.state = new SudokuBoardState(this.state.initialPuzzle, this.state.solution);
+    this.state = new SudokuBoardState(this.state.initialPuzzle, this.state.solution, this.state.difficulty);
     this.selected = { row: 0, col: 2 };
     this.pressedKey = 0;
     this.noteButton.label = '标记';
@@ -135,7 +131,7 @@ export default class SudokuScene extends BaseGameScene {
         this.state.completed = true;
         this.state.saveResult();
         const currentScore = this.state.getScore();
-        const history = getHistory('sudoku').map((h) => ({
+        const history = getHistory('sudoku', this.state.difficulty).map((h) => ({
           label: `${h.score}分 · ${h.time}s`,
           highlight: h.score === currentScore,
         }));

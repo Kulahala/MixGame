@@ -137,7 +137,7 @@ export default class Game2048Scene extends BaseGameScene {
       this.state.saveResult();
 
       if (this.state.won) {
-        const history = getHistory('game2048').map((h) => ({
+        const history = getHistory('game2048', `目标${this.state.target}`).map((h) => ({
           label: `${h.score}分 · ${h.steps}步`,
           highlight: h.score === this.state.score,
         }));

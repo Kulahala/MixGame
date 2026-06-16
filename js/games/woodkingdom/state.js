@@ -7,10 +7,10 @@ export const CARD_TYPES = {
     maxHp: 1,
     hp: 1,
     attack: 0,
-    cost: { raindrop: 0, wood: 0, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 0, leaf: 0 },
     sigils: [],
-    sacrificeReward: { wood: 1 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   sprout: {
     id: 'sprout',
@@ -18,10 +18,10 @@ export const CARD_TYPES = {
     maxHp: 1,
     hp: 1,
     attack: 0,
-    cost: { raindrop: 0, wood: 0, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 0, leaf: 0 },
     sigils: [],
-    sacrificeReward: { raindrop: 1 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   sapling: {
     id: 'sapling',
@@ -29,10 +29,10 @@ export const CARD_TYPES = {
     maxHp: 2,
     hp: 2,
     attack: 1,
-    cost: { raindrop: 1, wood: 0, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 1, leaf: 0 },
     sigils: [],
-    sacrificeReward: { wood: 1 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   oak: {
     id: 'oak',
@@ -40,10 +40,10 @@ export const CARD_TYPES = {
     maxHp: 5,
     hp: 5,
     attack: 1,
-    cost: { raindrop: 0, wood: 2, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 2, leaf: 0 },
     sigils: [],
-    sacrificeReward: { wood: 2 },
-    deathReward: { acorn: 2 }
+    releaseReward: { dewdrop: 2 },
+    leaveReward: { leaf: 2 }
   },
   bird: {
     id: 'bird',
@@ -51,10 +51,10 @@ export const CARD_TYPES = {
     maxHp: 1,
     hp: 1,
     attack: 1,
-    cost: { raindrop: 1, wood: 0, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 1, leaf: 0 },
     sigils: ['airborne'],
-    sacrificeReward: { raindrop: 1 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   bifurcated_pine: {
     id: 'bifurcated_pine',
@@ -62,21 +62,21 @@ export const CARD_TYPES = {
     maxHp: 3,
     hp: 3,
     attack: 1,
-    cost: { raindrop: 0, wood: 2, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 2, leaf: 0 },
     sigils: ['bifurcated'],
-    sacrificeReward: { wood: 2 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 2 },
+    leaveReward: { leaf: 1 }
   },
   deathtouch_mushroom: {
     id: 'deathtouch_mushroom',
-    name: '剧毒菇',
+    name: '催眠菇',
     maxHp: 1,
     hp: 1,
     attack: 1,
-    cost: { raindrop: 1, wood: 1, acorn: 0, leaves: 0 },
-    sigils: ['deathtouch'],
-    sacrificeReward: { raindrop: 1 },
-    deathReward: { acorn: 1 }
+    cost: { dewdrop: 1, leaf: 1 },
+    sigils: ['sleepTouch'],
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   nut_shield: {
     id: 'nut_shield',
@@ -84,10 +84,10 @@ export const CARD_TYPES = {
     maxHp: 4,
     hp: 4,
     attack: 0,
-    cost: { raindrop: 0, wood: 0, acorn: 1, leaves: 0 },
+    cost: { dewdrop: 0, leaf: 1 },
     sigils: ['shield'],
-    sacrificeReward: { wood: 1 },
-    deathReward: { acorn: 1 }
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   },
   grove_guardian: {
     id: 'grove_guardian',
@@ -95,17 +95,50 @@ export const CARD_TYPES = {
     maxHp: 5,
     hp: 5,
     attack: 2,
-    cost: { raindrop: 0, wood: 3, acorn: 0, leaves: 0 },
+    cost: { dewdrop: 3, leaf: 0 },
     sigils: [],
-    sacrificeReward: { wood: 2 },
-    deathReward: { acorn: 2 }
+    releaseReward: { dewdrop: 2 },
+    leaveReward: { leaf: 2 }
+  },
+  moss_turtle: {
+    id: 'moss_turtle',
+    name: '苔藓龟',
+    maxHp: 3,
+    hp: 3,
+    attack: 1,
+    cost: { dewdrop: 2, leaf: 0 },
+    sigils: ['unkillable'],
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
+  },
+  elder_deer: {
+    id: 'elder_deer',
+    name: '长老鹿',
+    maxHp: 4,
+    hp: 4,
+    attack: 2,
+    cost: { dewdrop: 2, leaf: 1 },
+    sigils: ['leader'],
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
+  },
+  baby_owl: {
+    id: 'baby_owl',
+    name: '猫头鹰雏',
+    maxHp: 1,
+    hp: 1,
+    attack: 1,
+    cost: { dewdrop: 1, leaf: 0 },
+    sigils: ['fledgling'],
+    releaseReward: { dewdrop: 1 },
+    leaveReward: { leaf: 1 }
   }
 };
 
 export class WoodKingdomState {
   constructor(level = 1) {
     this.level = level;
-    this.resources = { raindrop: 0, wood: 0, leaves: 0, acorn: 0 };
+    this.resources = { dewdrop: 0, leaf: 0 };
     this.playerSlots = [null, null, null, null];
     this.opponentSlots = [null, null, null, null];
     this.opponentQueue = [null, null, null, null];
@@ -119,7 +152,7 @@ export class WoodKingdomState {
 
   initDeck() {
     const defaultDeckIds = [
-      'sapling', 'sapling', 'bird', 'oak',
+      'sapling', 'baby_owl', 'bird', 'oak',
       'bifurcated_pine', 'deathtouch_mushroom',
       'nut_shield', 'grove_guardian'
     ];
@@ -147,21 +180,20 @@ export class WoodKingdomState {
       ...template,
       sigils: [...template.sigils],
       cost: {
-        raindrop: 0,
-        wood: 0,
-        acorn: 0,
-        leaves: 0,
+        dewdrop: 0,
+        leaf: 0,
         ...template.cost
       },
       hp: template.maxHp,
-      instanceId: Math.random().toString(36).substring(2, 11)
+      instanceId: Math.random().toString(36).substring(2, 11),
+      turnsAlive: 0
     };
     card.shieldActive = card.sigils.includes('shield');
     return card;
   }
 
   reset() {
-    this.resources = { raindrop: 0, wood: 0, leaves: 0, acorn: 0 };
+    this.resources = { dewdrop: 0, leaf: 0 };
     this.playerSlots = [null, null, null, null];
     this.opponentSlots = [null, null, null, null];
     this.opponentQueue = [null, null, null, null];
@@ -189,31 +221,33 @@ export class WoodKingdomState {
     }
   }
 
-  sacrificeCard(slotIndex) {
+  releaseCard(slotIndex) {
     if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 4) {
       throw new Error('Invalid slot index');
     }
     const card = this.playerSlots[slotIndex];
     if (!card) {
-      throw new Error('No card to sacrifice at this slot');
+      throw new Error('No card to release at this slot');
     }
 
-    const reward = card.sacrificeReward || {};
-    const raindropGain = reward.raindrop || 0;
-    const woodGain = reward.wood || 0;
-    const acornGain = reward.acorn || 0;
-    const leavesGain = reward.leaves || 0;
+    const releaseReward = card.releaseReward || {};
+    const dewdropGain = releaseReward.dewdrop || 0;
+    
+    const leaveReward = card.leaveReward || {};
+    const leafGain = leaveReward.leaf || 0;
 
-    this.resources.raindrop += raindropGain;
-    this.resources.wood += woodGain;
-    this.resources.acorn += acornGain;
-    this.resources.leaves += leavesGain;
+    this.resources.dewdrop += dewdropGain;
+    this.resources.leaf += leafGain;
 
     this.playerSlots[slotIndex] = null;
 
+    if (card.sigils.includes('unkillable')) {
+      this.hand.push(this.createCard(card.id));
+    }
+
     return {
       card,
-      gained: { raindrop: raindropGain, wood: woodGain, acorn: acornGain, leaves: leavesGain }
+      gained: { dewdrop: dewdropGain, leaf: leafGain }
     };
   }
 
@@ -240,22 +274,15 @@ export class WoodKingdomState {
 
     const card = this.hand[cardIndex];
     const cost = card.cost || {};
-    const raindropCost = cost.raindrop || 0;
-    const woodCost = cost.wood || 0;
-    const acornCost = cost.acorn || 0;
-    const leavesCost = cost.leaves || 0;
+    const dewdropCost = cost.dewdrop || 0;
+    const leafCost = cost.leaf || 0;
 
-    if (this.resources.raindrop < raindropCost ||
-        this.resources.wood < woodCost ||
-        this.resources.acorn < acornCost ||
-        this.resources.leaves < leavesCost) {
+    if (this.resources.dewdrop < dewdropCost || this.resources.leaf < leafCost) {
       throw new Error('Not enough resources to play this card');
     }
 
-    this.resources.raindrop -= raindropCost;
-    this.resources.wood -= woodCost;
-    this.resources.acorn -= acornCost;
-    this.resources.leaves -= leavesCost;
+    this.resources.dewdrop -= dewdropCost;
+    this.resources.leaf -= leafCost;
 
     this.playerSlots[slotIndex] = card;
     this.hand.splice(cardIndex, 1);
@@ -300,12 +327,14 @@ export class WoodKingdomState {
     let placementProbability = 0.4;
     let cardPool = ['squirrel', 'sprout', 'sapling'];
 
-    if (level === 2) {
+    if (level === 1) {
+      cardPool = ['squirrel', 'sprout', 'sapling', 'baby_owl'];
+    } else if (level === 2) {
       placementProbability = 0.6;
-      cardPool = ['sapling', 'bird', 'bifurcated_pine', 'nut_shield'];
+      cardPool = ['sapling', 'bird', 'bifurcated_pine', 'nut_shield', 'elder_deer'];
     } else if (level >= 3) {
       placementProbability = 0.8;
-      cardPool = ['oak', 'bifurcated_pine', 'deathtouch_mushroom', 'grove_guardian'];
+      cardPool = ['oak', 'bifurcated_pine', 'deathtouch_mushroom', 'grove_guardian', 'moss_turtle'];
     }
 
     for (let i = 0; i < 4; i++) {
@@ -345,6 +374,9 @@ export class WoodKingdomState {
   resolveTurn() {
     const log = [];
 
+    // 每回合战斗结算开始前，露珠清零
+    this.resources.dewdrop = 0;
+
     // 1. Opponent advances queue to frontline
     this.advanceOpponentQueue(log);
 
@@ -357,7 +389,17 @@ export class WoodKingdomState {
       // Player attacks
       const playerCard = this.playerSlots[i];
       if (playerCard && playerCard.hp > 0 && playerCard.attack > 0) {
-        this.resolveCardAttack('player', i, playerCard, log);
+        if (playerCard.sleeping) {
+          playerCard.sleeping = false; // 醒来
+          log.push({
+            type: 'sleep_skip',
+            side: 'player',
+            slotIndex: i,
+            card: { ...playerCard }
+          });
+        } else {
+          this.resolveCardAttack('player', i, playerCard, log);
+        }
       }
 
       if (this.isGameOver().finished) {
@@ -367,11 +409,64 @@ export class WoodKingdomState {
       // Opponent attacks
       const opponentCard = this.opponentSlots[i];
       if (opponentCard && opponentCard.hp > 0 && opponentCard.attack > 0) {
-        this.resolveCardAttack('opponent', i, opponentCard, log);
+        if (opponentCard.sleeping) {
+          opponentCard.sleeping = false; // 醒来
+          log.push({
+            type: 'sleep_skip',
+            side: 'opponent',
+            slotIndex: i,
+            card: { ...opponentCard }
+          });
+        } else {
+          this.resolveCardAttack('opponent', i, opponentCard, log);
+        }
       }
     }
 
-    // 3. Opponent AI plays new cards to queue for next turn
+    // 3. Fledgling 进化与 turnsAlive 计数
+    for (let i = 0; i < 4; i++) {
+      const pCard = this.playerSlots[i];
+      if (pCard) {
+        pCard.turnsAlive = (pCard.turnsAlive || 0) + 1;
+        if (pCard.sigils.includes('fledgling') && pCard.turnsAlive >= 1) {
+          pCard.attack += 1;
+          pCard.hp += 2;
+          pCard.maxHp += 2;
+          pCard.sigils = pCard.sigils.filter(s => s !== 'fledgling');
+          if (pCard.id === 'baby_owl') {
+            pCard.sigils.push('airborne');
+          }
+          log.push({
+            type: 'fledgling_evolve',
+            side: 'player',
+            slotIndex: i,
+            card: { ...pCard }
+          });
+        }
+      }
+
+      const oCard = this.opponentSlots[i];
+      if (oCard) {
+        oCard.turnsAlive = (oCard.turnsAlive || 0) + 1;
+        if (oCard.sigils.includes('fledgling') && oCard.turnsAlive >= 1) {
+          oCard.attack += 1;
+          oCard.hp += 2;
+          oCard.maxHp += 2;
+          oCard.sigils = oCard.sigils.filter(s => s !== 'fledgling');
+          if (oCard.id === 'baby_owl') {
+            oCard.sigils.push('airborne');
+          }
+          log.push({
+            type: 'fledgling_evolve',
+            side: 'opponent',
+            slotIndex: i,
+            card: { ...oCard }
+          });
+        }
+      }
+    }
+
+    // 4. Opponent AI plays new cards to queue for next turn
     this.runOpponentAI(log);
 
     this.turn++;
@@ -414,7 +509,17 @@ export class WoodKingdomState {
     const targetSide = attackerSide === 'player' ? 'opponent' : 'player';
     const targetSlots = targetSide === 'player' ? this.playerSlots : this.opponentSlots;
     const targetCard = targetSlots[targetIdx];
-    const dmg = card.attack;
+    
+    // 计算 Leader 印记攻击加成
+    let dmg = card.attack;
+    const slots = attackerSide === 'player' ? this.playerSlots : this.opponentSlots;
+    if (fromIdx > 0 && slots[fromIdx - 1] && slots[fromIdx - 1].sigils.includes('leader')) {
+      dmg += 1;
+    }
+    if (fromIdx < 3 && slots[fromIdx + 1] && slots[fromIdx + 1].sigils.includes('leader')) {
+      dmg += 1;
+    }
+
     const isAirborne = card.sigils.includes('airborne');
 
     if (!targetCard || isAirborne) {
@@ -466,10 +571,11 @@ export class WoodKingdomState {
           targetCard: { ...targetCard }
         });
 
-        if (card.sigils.includes('deathtouch') && dmg > 0 && targetCard.hp > 0) {
-          targetCard.hp = 0;
+        // 催眠印记
+        if (card.sigils.includes('sleepTouch') && dmg > 0 && targetCard.hp > 0) {
+          targetCard.sleeping = true;
           log.push({
-            type: 'deathtouch_trigger',
+            type: 'sleepTouch_trigger',
             side: targetSide,
             slotIndex: targetIdx,
             card: { ...targetCard }
@@ -485,23 +591,25 @@ export class WoodKingdomState {
             card: { ...targetCard }
           });
 
-          if (targetSide === 'player') {
-            const acornGain = (targetCard.deathReward && targetCard.deathReward.acorn !== undefined) ? targetCard.deathReward.acorn : 1;
-            this.resources.acorn += acornGain;
+          // 不朽印记
+          if (targetCard.sigils.includes('unkillable') && targetSide === 'player') {
+            this.hand.push(this.createCard(targetCard.id));
             log.push({
-              type: 'resource_gain',
-              resource: 'acorn',
-              amount: acornGain
-            });
-          } else {
-            const leavesGain = (targetCard.deathReward && targetCard.deathReward.leaves !== undefined) ? targetCard.deathReward.leaves : 1;
-            this.resources.leaves += leavesGain;
-            log.push({
-              type: 'resource_gain',
-              resource: 'leaves',
-              amount: leavesGain
+              type: 'unkillable_trigger',
+              side: targetSide,
+              slotIndex: targetIdx,
+              card: { ...targetCard }
             });
           }
+
+          // 发放 leaf 离场奖励
+          const leafGain = (targetCard.leaveReward && targetCard.leaveReward.leaf !== undefined) ? targetCard.leaveReward.leaf : 1;
+          this.resources.leaf += leafGain;
+          log.push({
+            type: 'resource_gain',
+            resource: 'leaf',
+            amount: leafGain
+          });
         }
       }
     }

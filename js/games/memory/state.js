@@ -100,7 +100,11 @@ export default class MemoryState {
   }
 
   getScore() {
-    return Math.max(100, 1000 - this.getElapsed() * 3 - this.steps * 5);
+    let base = 1000;
+    const cells = this.rows * this.cols;
+    if (cells === 16) base = 2000;
+    if (cells === 24) base = 3000;
+    return Math.max(100, base - this.getElapsed() * 3 - this.steps * 5);
   }
 
   saveResult() {

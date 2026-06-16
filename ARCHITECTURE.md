@@ -64,7 +64,7 @@ State classes own gameplay rules, scoring inputs, completion checks, timers, and
 
 `SlitherlinkState` and `OneStrokeState` also follow this state encapsulation pattern, using algorithmic pathfinding (DFS) and heuristics to ensure 100% solvable puzzle generation.
 
-`WoodKingdomState` owns the battlefield grids (opponent queue, opponent frontline, and player frontline), card configurations, double resources (raindrop and wood), death rewards (acorn and leaves), scale tilt value, level progression, AI actions, turn resolution sequence, and local save.
+`WoodKingdomState` owns the battlefield grids (opponent queue, opponent frontline, and player frontline), card configurations, double resources (dewdrop and leaf), release and leave rewards, scale tilt value, level progression, AI actions, turn resolution sequence, and local save.
 
 Scenes should not duplicate core game rules. They should translate screen input into state method calls and render state.
 
