@@ -1,6 +1,7 @@
 import Button from '../ui/button.js';
 import ResultModal from '../ui/result-modal.js';
 import InputDispatcher from './input-dispatcher.js';
+import { easeOutQuart, easeInQuad } from '../ui/animation.js';
 
 /**
  * BaseGameScene — 游戏场景基类
@@ -148,7 +149,7 @@ export default class BaseGameScene {
 
     // 进场动画
     const progress = Math.min(1, this.host.sceneAge / 320);
-    const ease = 1 - Math.pow(1 - progress, 4);
+    const ease = easeOutQuart(progress);
     const reveal = ease;
 
     // 退场动画
@@ -156,7 +157,7 @@ export default class BaseGameScene {
     let exitOffset = 0;
     if (this.isExiting) {
       const p = this.exitTime / this.exitDuration;
-      const easeExit = p * p;
+      const easeExit = easeInQuad(p);
       exitAlpha = 1 - easeExit;
       exitOffset = easeExit * 16;
     }

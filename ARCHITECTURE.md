@@ -8,14 +8,14 @@ This project is a pure frontend WeChat Mini Game collection. Runtime code runs o
 
 `GameHost` owns the active scene, frame updates, rendering, scene switching, touch dispatch, and shared visual effects. Scenes expose optional `init()`, `update(dt)`, `render(ctx)`, `onTouchStart(point)`, `onTouchMove(point)`, `onTouchEnd(point)`, and `destroy()` methods.
 
-All game scenes extend `BaseGameScene`, which provides standard enter/exit animations, top-bar buttons (back + restart), result modal lifecycle, and input cleanup. Subclasses implement `reset()` and `renderGame(ctx)`.
+All game scenes extend `BaseGameScene`, which provides standard enter/exit animations, top-bar back button, result modal lifecycle, and input cleanup. Subclasses implement `reset()` and `renderGame(ctx)`.
 
 ## Module Boundaries
 
-- `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `game-scene-base.js` provides shared scene behavior (animations, buttons, modals), `input-dispatcher.js` routes touches to interactive objects, and `storage.js` persists local scores.
+- `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `game-scene-base.js` provides shared scene behavior (animations, buttons, modals), `input-dispatcher.js` routes touches to interactive objects, `storage.js` persists local scores, and `layout.js` provides responsive screen tier detection (`tablet`/`standard`/`compact`/`tiny`).
 - `js/scenes/`: app-level screens. `menu-scene.js` renders the game selection menu and opens configuration modals.
-- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`.
-- `js/ui/`: reusable Canvas UI primitives and overlays.
+- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, `onestroke/`.
+- `js/ui/`: reusable Canvas UI primitives and overlays. `canvas.js` provides low-level helpers (text, scaling, hit-testing), `animation.js` provides shared easing functions (easeOutQuart, easeOutCubic, easeOutBack, smoothLerp) consumed by scenes and modals.
 - `js/themes/`: shared visual tokens. Current UI uses `elegant.js`.
 - `dev/`: browser-only debug adapter. It should not become a second runtime architecture.
 
@@ -60,7 +60,9 @@ State classes own gameplay rules, scoring inputs, completion checks, timers, and
 
 `HuarongdaoState` owns puzzle size, grid generation, shuffle, tile movement, solve detection, timing, steps, and local save.
 
-`MinesweeperState`, `Game2048State`, and `MemoryState` follow the same pattern: own the game rules, completion checks, scoring, and local save.
+`MinesweeperState`, `Game2048State`, and `MemoryState` follow the same pattern: own the game rules, completion checks, scoring, and local save. `Game2048State` additionally tracks per-tile identity (`{ id, value }` objects) and returns movement metadata from `move()` to support slide/spawn animation in the scene layer.
+
+`SlitherlinkState` and `OneStrokeState` also follow this state encapsulation pattern, using algorithmic pathfinding (DFS) and heuristics to ensure 100% solvable puzzle generation.
 
 `WoodKingdomState` owns the battlefield grids (opponent queue, opponent frontline, and player frontline), card configurations, double resources (raindrop and wood), death rewards (acorn and leaves), scale tilt value, level progression, AI actions, turn resolution sequence, and local save.
 
@@ -68,7 +70,7 @@ Scenes should not duplicate core game rules. They should translate screen input 
 
 ## Scoring And Storage
 
-Scores are stored through `saveScore(gameId, result)` in `js/core/storage.js`, using `wx.setStorageSync` under the key `mini_game_collection_scores_v1`. Default score templates exist for all five games.
+Scores are stored through `saveScore(gameId, result)` in `js/core/storage.js`, using `wx.setStorageSync` under the key `mini_game_collection_scores_v1`. Default score templates exist for all games.
 
 Current stored fields include best and last values for score, time, steps, mistakes, difficulty, level id, and play count. If future games need different metrics, extend storage deliberately instead of overloading existing fields with unrelated meaning.
 
@@ -76,7 +78,9 @@ Result screens may display intuitive per-game metrics such as time, steps, mista
 
 ## UI And Effects
 
-Canvas UI should use shared helpers from `js/ui/canvas.js` and shared theme values from `js/themes/elegant.js`. Game scenes should extend `BaseGameScene` and implement `reset()` and `renderGame(ctx)` rather than duplicating animation, button, and modal logic.
+Canvas UI should use shared helpers from `js/ui/canvas.js` (draw, `scaleAround`, `clamp`, `hitTestGrid`), shared easing from `js/ui/animation.js`, and shared theme values from `js/themes/elegant.js`. Game scenes should extend `BaseGameScene` and implement `reset()` and `renderGame(ctx)` rather than duplicating animation, button, and modal logic.
+
+Game-specific animations live in the scene layer (`index.js`), consuming state change metadata and interpolating visuals per frame. Current animation patterns: 2048 tile slide/spawn (two-phase: slide 160ms + spawn 200ms with input locking), minesweeper cell reveal (synchronous fade/scale 150ms), memory card flip (3D scaleX interpolation 200ms). All use easing functions from `js/ui/animation.js`.
 
 Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`. `quotes.js` acts as a static collection of zen-styled quotes and game-specific tips, rendered randomly at the bottom of the menu and game scenes.
 

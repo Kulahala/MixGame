@@ -106,10 +106,14 @@ export default class HuarongdaoState {
     return Math.floor((Date.now() - this.startTime) / 1000);
   }
 
+  getScore() {
+    return Math.max(100, 1000 - this.getElapsed() * 2 - this.steps * 10);
+  }
+
   saveResult() {
     if (this.saved) return;
     const time = this.getElapsed();
-    const score = Math.max(100, 1000 - time * 2 - this.steps * 10);
+    const score = this.getScore();
     saveScore('huarongdao', {
       score,
       time,

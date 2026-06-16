@@ -1,11 +1,16 @@
 import Button from './button.js';
 import { drawText, fillRoundRect, strokeRoundRect } from './canvas.js';
+import { easeOutBack, easeInQuad } from './animation.js';
 
 export default class ResultModal {
+  /**
+   * @param {Object} options
+   * @param {string[]} options.stats - 统计项字符串数组
+   */
   constructor(options) {
     this.host = options.host;
     this.title = options.title || '通关！';
-    this.stats = options.stats || []; // 格式：['用时：30s', '步数：120步']
+    this.stats = options.stats || [];
     this.history = options.history || [];
     this.onRestart = options.onRestart || function() {};
     this.onMenu = options.onMenu || function() {};
@@ -76,7 +81,7 @@ export default class ResultModal {
     if (this.isClosing) {
       this.animTime = Math.max(0, this.animTime - dt);
       const progress = this.animTime / this.animDuration; // 从 1 降到 0
-      const ease = progress * progress; // ease-in quad
+      const ease = easeInQuad(progress); // ease-in quad
       this.alpha = ease;
       this.scale = 0.8 + 0.2 * ease;
       if (this.animTime === 0 && this.closeCallback) {
@@ -90,8 +95,7 @@ export default class ResultModal {
         const progress = this.animTime / this.animDuration; // 从 0 升到 1
         
         // easeOutBack 弹性曲线
-        const c1 = 1.0; // 缓和的弹性系数
-        const ease = 1 + (c1 + 1) * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
+        const ease = easeOutBack(progress, 1.0);
         
         this.alpha = Math.min(1, progress * 1.4); // 稍微提前淡入完毕
         this.scale = 0.8 + 0.2 * ease;

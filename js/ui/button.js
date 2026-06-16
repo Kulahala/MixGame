@@ -13,13 +13,6 @@ export default class Button {
     this.isPressed = false;
   }
 
-  setFrame(x, y, w, h) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-  }
-
   hit(x, y) {
     return contains(this, x, y);
   }

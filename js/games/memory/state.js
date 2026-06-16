@@ -20,6 +20,7 @@ export default class MemoryState {
     this.startTime = Date.now();
     this.steps = 0;
     this.matchedPairs = 0;
+    this._firstFlipped = null;
 
     this.init();
   }
@@ -52,6 +53,7 @@ export default class MemoryState {
     this.startTime = Date.now();
     this.steps = 0;
     this.matchedPairs = 0;
+    this._firstFlipped = null;
   }
 
   flip(row, col) {
@@ -62,49 +64,49 @@ export default class MemoryState {
     card.faceUp = true;
     this.steps++;
 
-    const faceUpCards = [];
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        if (this.cards[r][c].faceUp && !this.cards[r][c].matched) {
-          faceUpCards.push({ r, c, card: this.cards[r][c] });
-        }
-      }
+    if (this._firstFlipped === null) {
+      this._firstFlipped = { r: row, c: col, card };
+      return { action: 'flip', card1: { r: row, c: col } };
     }
 
-    if (faceUpCards.length === 2) {
-      const [a, b] = faceUpCards;
-      if (a.card.symbol === b.card.symbol) {
-        a.card.matched = true;
-        b.card.matched = true;
-        this.matchedPairs++;
+    const a = this._firstFlipped;
+    const b = { r: row, c: col, card };
+    this._firstFlipped = null;
 
-        if (this.matchedPairs >= this.pairs) {
-          this.completed = true;
-        }
+    if (a.card.symbol === b.card.symbol) {
+      a.card.matched = true;
+      b.card.matched = true;
+      this.matchedPairs++;
 
-        return { action: 'match', card1: { r: a.r, c: a.c }, card2: { r: b.r, c: b.c } };
-      } else {
-        return { action: 'mismatch', card1: { r: a.r, c: a.c }, card2: { r: b.r, c: b.c } };
+      if (this.matchedPairs >= this.pairs) {
+        this.completed = true;
       }
+
+      return { action: 'match', card1: { r: a.r, c: a.c }, card2: { r: b.r, c: b.c } };
     }
 
-    return { action: 'flip', card1: { r: row, c: col } };
+    return { action: 'mismatch', card1: { r: a.r, c: a.c }, card2: { r: b.r, c: b.c } };
   }
 
   hideCards(positions) {
     for (const { r, c } of positions) {
       this.cards[r][c].faceUp = false;
     }
+    this._firstFlipped = null;
   }
 
   getElapsed() {
     return Math.floor((Date.now() - this.startTime) / 1000);
   }
 
+  getScore() {
+    return Math.max(100, 1000 - this.getElapsed() * 3 - this.steps * 5);
+  }
+
   saveResult() {
     if (this.saved) return;
     const time = this.getElapsed();
-    const score = Math.max(100, 1000 - time * 3 - this.steps * 5);
+    const score = this.getScore();
     saveScore('memory', {
       score,
       time,

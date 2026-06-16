@@ -5,7 +5,6 @@ import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/can
 import { PUZZLE, SOLUTION } from './puzzle.js';
 import { generateSudoku } from './generator.js';
 import SudokuBoardState from './state.js';
-import InputDispatcher from '../../core/input-dispatcher.js';
 import { getRandomQuote } from '../../ui/quotes.js';
 
 export default class SudokuScene extends BaseGameScene {
@@ -24,10 +23,8 @@ export default class SudokuScene extends BaseGameScene {
 
     this.state = new SudokuBoardState(initialPuzzle, solution);
     this.selected = { row: 0, col: 2 };
-    this.buttons = [];
     this.pressedKey = 0;
     this.keyPressTimer = null;
-    this.input = new InputDispatcher();
     this.bottomQuote = getRandomQuote('sudoku');
   }
 
@@ -71,11 +68,16 @@ export default class SudokuScene extends BaseGameScene {
     // 缓存键盘布局
     this._cacheKeypadLayout();
 
-    // 创建底部操作按钮
+    // 创建底部操作按钮（撤销、标记、擦除）
+    const btnW = width >= 340 ? 64 : 60;
+    const btnGap = 12;
+    const totalW = btnW * 3 + btnGap * 2;
+    const btnStartX = (width - totalW) / 2;
+
     this.undoButton = new Button({
-      x: width / 2 - 80,
+      x: btnStartX,
       y: this.actionBtnY,
-      w: 74,
+      w: btnW,
       h: 36,
       label: '撤销',
       variant: 'ghost',
@@ -86,9 +88,9 @@ export default class SudokuScene extends BaseGameScene {
       },
     });
     this.noteButton = new Button({
-      x: width / 2 + 6,
+      x: btnStartX + btnW + btnGap,
       y: this.actionBtnY,
-      w: 74,
+      w: btnW,
       h: 36,
       label: '标记',
       variant: 'ghost',
@@ -98,8 +100,21 @@ export default class SudokuScene extends BaseGameScene {
         this.noteButton.variant = isNote ? 'secondary' : 'ghost';
       },
     });
+    this.eraseButton = new Button({
+      x: btnStartX + (btnW + btnGap) * 2,
+      y: this.actionBtnY,
+      w: btnW,
+      h: 36,
+      label: '擦除',
+      variant: 'ghost',
+      onClick: () => {
+        if (this.selected) {
+          this.state.erase(this.selected.row, this.selected.col);
+        }
+      },
+    });
 
-    this.createTopButtons([this.undoButton, this.noteButton]);
+    this.createTopButtons([this.undoButton, this.noteButton, this.eraseButton]);
   }
 
   reset() {
@@ -247,7 +262,7 @@ export default class SudokuScene extends BaseGameScene {
     for (let row = 0; row < 3; row++) {
       for (let col = 0; col < 3; col++) {
         const value = row * 3 + col + 1;
-        const rect = this.getKeyRect(layout, row, col, value);
+        const rect = this.getKeyRect(layout, row, col);
         const isPressed = this.pressedKey === value;
         const depth = isPressed ? 3 : 0;
 
@@ -306,7 +321,7 @@ export default class SudokuScene extends BaseGameScene {
     for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
       for (let colIndex = 0; colIndex < 3; colIndex++) {
         const i = rowIndex * 3 + colIndex + 1;
-        const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
+        const rect = this.getKeyRect(layout, rowIndex, colIndex);
         if (contains(rect, point.x, point.y)) {
           this.state.fillNumber(this.selected.row, this.selected.col, i);
           return;
@@ -321,7 +336,7 @@ export default class SudokuScene extends BaseGameScene {
     for (let rowIndex = 0; rowIndex < 3; rowIndex++) {
       for (let colIndex = 0; colIndex < 3; colIndex++) {
         const i = rowIndex * 3 + colIndex + 1;
-        const rect = this.getKeyRect(layout, rowIndex, colIndex, i);
+        const rect = this.getKeyRect(layout, rowIndex, colIndex);
         if (contains(rect, point.x, point.y)) {
           this.pressKey(i);
           return;
@@ -392,7 +407,7 @@ export default class SudokuScene extends BaseGameScene {
     return this._keypadLayout;
   }
 
-  getKeyRect(layout, row, col, value) {
+  getKeyRect(layout, row, col) {
     return this._keyRects[row * 3 + col];
   }
 

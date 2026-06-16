@@ -109,7 +109,7 @@ export default class MemoryScene extends BaseGameScene {
         this.completedTimer = -1;
         this.state.saveResult();
         const time = this.state.getElapsed();
-        const currentScore = Math.max(100, 1000 - time * 3 - this.state.steps * 5);
+        const currentScore = this.state.getScore();
         const history = getHistory('memory').map((h) => ({
           label: `${h.time}s · ${h.steps}步`,
           highlight: h.score === currentScore,

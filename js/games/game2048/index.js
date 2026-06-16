@@ -3,28 +3,50 @@ import { getHistory } from '../../core/storage.js';
 import Game2048State from './state.js';
 import { contains, drawText, fillRoundRect } from '../../ui/canvas.js';
 import { getRandomQuote } from '../../ui/quotes.js';
+import { easeOutCubic, easeOutBack } from '../../ui/animation.js';
 
 // ── Tile colour palette ────────────────────────────────
-const TILE_COLORS = {
-  2:    '#ece7dd',
-  4:    '#e0d8c8',
-  8:    '#d4a76a',
-  16:   '#c4884a',
-  32:   '#b06a3a',
-  64:   '#a54b44',
-  128:  '#7a8b5d',
-  256:  '#536b5d',
-  512:  '#52677a',
-  1024: '#b29259',
-  2048: '#7a4f3f',
-};
-
-function getTileColor(value) {
-  return TILE_COLORS[value] || '#4b463f';
+function getTileColor(value, theme) {
+  const colors = {
+    2:    theme.color.paperDeep,
+    4:    '#e0d8c8',
+    8:    '#d4a76a',
+    16:   '#c4884a',
+    32:   '#b06a3a',
+    64:   theme.color.danger,
+    128:  '#7a8b5d',
+    256:  theme.color.sage,
+    512:  theme.color.blue,
+    1024: theme.color.gold,
+    2048: theme.color.accent,
+  };
+  return colors[value] || '#4b463f';
 }
 
 function getTextColor(value, theme) {
   return (value === 2 || value === 4) ? theme.color.ink : theme.color.white;
+}
+
+function drawTileAt(ctx, value, x, y, cellSize, scale, theme) {
+  const size = cellSize * scale;
+  const offset = (cellSize - size) / 2;
+  const centerX = x + cellSize / 2;
+  const centerY = y + cellSize / 2;
+  const tileColor = getTileColor(value, theme);
+  const r = theme.radius.sm;
+
+  fillRoundRect(ctx, x + offset, y + offset, size, size, r, tileColor);
+
+  const textColor = getTextColor(value, theme);
+  const fontSize = value >= 1000 ? cellSize * 0.32 : cellSize * 0.42;
+  drawText(ctx, String(value), centerX, centerY + 1, {
+    size: fontSize * scale,
+    color: textColor,
+    align: 'center',
+    baseline: 'middle',
+    font: theme.font.body,
+    weight: '600',
+  });
 }
 
 export default class Game2048Scene extends BaseGameScene {
@@ -34,6 +56,9 @@ export default class Game2048Scene extends BaseGameScene {
     this.touchStartPoint = null;
     this.gap = 8;
     this.bottomQuote = getRandomQuote('game2048');
+    this.tileAnims = [];
+    this.isAnimating = false;
+    this.pendingSpawn = null;
   }
 
   // ── Layout ───────────────────────────────────────────
@@ -73,10 +98,40 @@ export default class Game2048Scene extends BaseGameScene {
     this.state.init();
     this.touchStartPoint = null;
     this.bottomQuote = getRandomQuote('game2048');
+    this.tileAnims = [];
+    this.isAnimating = false;
+    this.pendingSpawn = null;
   }
 
   update(dt) {
     if (super.update(dt)) return;
+
+    // ── Animation tick ────────────────────────────
+    if (this.isAnimating) {
+      let allDone = true;
+      for (const anim of this.tileAnims) {
+        anim.progress = Math.min(1, anim.progress + dt / anim.duration);
+        if (anim.progress < 1) allDone = false;
+      }
+      if (allDone) {
+        if (this.pendingSpawn) {
+          // Slide finished — start spawn animation
+          this.tileAnims = [{
+            id: this.pendingSpawn.id,
+            fromR: this.pendingSpawn.r, fromC: this.pendingSpawn.c,
+            toR: this.pendingSpawn.r, toC: this.pendingSpawn.c,
+            value: this.pendingSpawn.value,
+            progress: 0,
+            duration: 200,
+            type: 'spawn',
+          }];
+          this.pendingSpawn = null;
+        } else {
+          this.tileAnims = [];
+          this.isAnimating = false;
+        }
+      }
+    }
 
     if (this.state.completed && !this.modal && !this.state.saved) {
       this.state.saveResult();
@@ -139,31 +194,54 @@ export default class Game2048Scene extends BaseGameScene {
     const r = theme.radius.md;
     fillRoundRect(ctx, this.gridX, this.gridY, this.gridSize, this.gridSize, r, theme.color.paper);
 
-    // ── Cells ───────────────────────────────────────
+    // ── Cells (static) ─────────────────────────────
     const { gap, cellSize, gridX, gridY } = this;
+    const animIds = new Set(this.tileAnims.map(a => a.id));
+    if (this.pendingSpawn) animIds.add(this.pendingSpawn.id);
+
     for (let r = 0; r < this.state.size; r++) {
       for (let c = 0; c < this.state.size; c++) {
-        const value = this.state.grid[r][c];
+        const cell = this.state.grid[r][c];
         const cx = gridX + gap + c * (cellSize + gap);
         const cy = gridY + gap + r * (cellSize + gap);
 
-        if (value === 0) {
+        if (cell === null) {
           fillRoundRect(ctx, cx, cy, cellSize, cellSize, theme.radius.sm, theme.color.paperDeep);
-        } else {
-          const tileColor = getTileColor(value);
-          fillRoundRect(ctx, cx, cy, cellSize, cellSize, theme.radius.sm, tileColor);
-
-          const textColor = getTextColor(value, theme);
-          const fontSize = value >= 1000 ? cellSize * 0.32 : cellSize * 0.42;
-          drawText(ctx, String(value), cx + cellSize / 2, cy + cellSize / 2 + 1, {
-            size: fontSize,
-            color: textColor,
-            align: 'center',
-            baseline: 'middle',
-            font: theme.font.body,
-            weight: '600',
-          });
+        } else if (!animIds.has(cell.id)) {
+          drawTileAt(ctx, cell.value, cx, cy, cellSize, 1, theme);
         }
+      }
+    }
+
+    // ── Animated tiles ────────────────────────────
+    for (const anim of this.tileAnims) {
+      if (anim.type === 'slide') {
+        const fromX = gridX + gap + anim.fromC * (cellSize + gap);
+        const fromY = gridY + gap + anim.fromR * (cellSize + gap);
+        const toX = gridX + gap + anim.toC * (cellSize + gap);
+        const toY = gridY + gap + anim.toR * (cellSize + gap);
+
+        const eased = easeOutCubic(anim.progress);
+        const x = fromX + (toX - fromX) * eased;
+        const y = fromY + (toY - fromY) * eased;
+
+        // Scale pulse for merged tiles at end of slide
+        let scale = 1;
+        if (anim.merged && anim.progress >= 0.8) {
+          const p = (anim.progress - 0.8) / 0.2;
+          scale = 1.1 - p * 0.1;
+        }
+
+        drawTileAt(ctx, anim.value, x, y, cellSize, scale, theme);
+      } else if (anim.type === 'spawn') {
+        const cx = gridX + gap + anim.toC * (cellSize + gap);
+        const cy = gridY + gap + anim.toR * (cellSize + gap);
+        const scale = easeOutBack(anim.progress);
+        const alpha = anim.progress;
+
+        ctx.globalAlpha = alpha;
+        drawTileAt(ctx, anim.value, cx, cy, cellSize, scale, theme);
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -181,6 +259,7 @@ export default class Game2048Scene extends BaseGameScene {
 
   onTouchStart(point) {
     if (this.isExiting) return;
+    if (this.isAnimating) return;
     if (this.input.onTouchStart(point.x, point.y)) {
       this.touchStartPoint = null;
       return;
@@ -199,6 +278,7 @@ export default class Game2048Scene extends BaseGameScene {
 
   onTouchEnd(point) {
     if (this.isExiting) return;
+    if (this.isAnimating) return;
     this.input.onTouchEnd(point.x, point.y);
 
     if (!this.touchStartPoint) return;
@@ -231,7 +311,22 @@ export default class Game2048Scene extends BaseGameScene {
       return; // diagonal, ignore
     }
 
-    this.state.move(direction);
+    const result = this.state.move(direction);
+    if (result.moved) {
+      this.tileAnims = result.movements.map(m => ({
+        id: m.id,
+        fromR: m.fromR, fromC: m.fromC,
+        toR: m.toR, toC: m.toC,
+        value: m.value,
+        merged: m.merged,
+        mergedFromIds: m.mergedFromIds,
+        progress: 0,
+        duration: 160,
+        type: 'slide',
+      }));
+      this.isAnimating = true;
+      this.pendingSpawn = result.newTile;
+    }
     this.touchStartPoint = null;
   }
 }

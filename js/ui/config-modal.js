@@ -1,5 +1,6 @@
 import Button from './button.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from './canvas.js';
+import { easeOutBack, easeInQuad, smoothLerp } from './animation.js';
 
 export default class ConfigModal {
   constructor(options) {
@@ -173,7 +174,7 @@ export default class ConfigModal {
     if (this.isClosing) {
       this.animTime = Math.max(0, this.animTime - dt);
       const progress = this.animTime / this.animDuration;
-      const ease = progress * progress;
+      const ease = easeInQuad(progress);
       this.alpha = ease;
       this.scale = 0.8 + 0.2 * ease;
       if (this.animTime === 0 && this.closeCallback) {
@@ -185,8 +186,7 @@ export default class ConfigModal {
       if (this.animTime < this.animDuration) {
         this.animTime = Math.min(this.animDuration, this.animTime + dt);
         const progress = this.animTime / this.animDuration;
-        const c1 = 1.0;
-        const ease = 1 + (c1 + 1) * Math.pow(progress - 1, 3) + c1 * Math.pow(progress - 1, 2);
+        const ease = easeOutBack(progress, 1.0);
         this.alpha = Math.min(1, progress * 1.4);
         this.scale = 0.8 + 0.2 * ease;
       }
@@ -197,7 +197,7 @@ export default class ConfigModal {
     if (Math.abs(targetHDiff) < 0.1) {
       this.h = this.targetH;
     } else {
-      this.h += targetHDiff * (1 - Math.pow(0.05, dt / 200));
+      this.h = smoothLerp(this.h, this.targetH, dt, 200);
     }
 
     // Smooth transition for rulesAlpha
@@ -206,7 +206,7 @@ export default class ConfigModal {
     if (Math.abs(alphaDiff) < 0.001) {
       this.rulesAlpha = targetAlpha;
     } else {
-      this.rulesAlpha += alphaDiff * (1 - Math.pow(0.05, dt / 200));
+      this.rulesAlpha = smoothLerp(this.rulesAlpha, targetAlpha, dt, 200);
     }
 
     this.updatePositions();

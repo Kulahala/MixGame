@@ -3,6 +3,8 @@ import { saveScore, getHistory } from '../../core/storage.js';
 import { WoodKingdomState, CARD_TYPES } from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect, contains, roundRect } from '../../ui/canvas.js';
 import { getRandomQuote } from '../../ui/quotes.js';
+import { easeOutCubic, smoothLerp } from '../../ui/animation.js';
+import { getScreenTier } from '../../core/layout.js';
 
 export default class WoodKingdomScene extends BaseGameScene {
   constructor(host, options = {}) {
@@ -18,63 +20,91 @@ export default class WoodKingdomScene extends BaseGameScene {
     this.createTopButtons();
 
     // Responsive Board & Hand Parameters depending on screen dimensions
-    if (width >= 500) {
-      // 1. Tablet / PC Wide Screen (iPad / foldables)
-      this.slotWidth = 90;
-      this.slotHeight = 120;
-      this.gap = 12;
-      this.gridRowGap = 20;
+    const tier = getScreenTier(width, height);
+    switch (tier) {
+      case 'tablet':
+        // Tablet / PC Wide Screen (iPad / foldables)
+        this.slotWidth = 90;
+        this.slotHeight = 120;
+        this.gap = 12;
+        this.gridRowGap = 20;
 
-      this.handCardWidth = 82;
-      this.handCardHeight = 110;
-      this.handY = height - 200; 
-      this.handGap = 12;
+        this.handCardWidth = 82;
+        this.handCardHeight = 110;
+        this.handY = height - 200;
+        this.handGap = 12;
 
-      this.drawY = height - 290;
-      this.pileWidth = 82;
-      this.pileHeight = 54;
+        this.drawY = height - 290;
+        this.pileWidth = 82;
+        this.pileHeight = 54;
 
-      this.beamHalfLength = 70;
-      this.avatarSize = 48;
-      this.pivotY = this.host.safeTop + 150;
-    } else if (height >= 750) {
-      // 2. Tall Screen Phone (regular modern phone)
-      this.slotWidth = 70;
-      this.slotHeight = 94;
-      this.gap = 10;
-      this.gridRowGap = 16;
+        this.beamHalfLength = 70;
+        this.avatarSize = 48;
+        this.pivotY = this.host.safeTop + 150;
+        break;
 
-      this.handCardWidth = 66;
-      this.handCardHeight = 90;
-      this.handY = height - 165; 
-      this.handGap = 10;
+      case 'standard':
+        // Tall Screen Phone (height >= 700)
+        this.slotWidth = 70;
+        this.slotHeight = 94;
+        this.gap = 10;
+        this.gridRowGap = 16;
 
-      this.drawY = height - 235;
-      this.pileWidth = 66;
-      this.pileHeight = 44;
+        this.handCardWidth = 66;
+        this.handCardHeight = 90;
+        this.handY = height - 165;
+        this.handGap = 10;
 
-      this.beamHalfLength = 55;
-      this.avatarSize = 36;
-      this.pivotY = this.host.safeTop + 130;
-    } else {
-      // 3. Small Screen Phone (older phone, e.g., iPhone SE2)
-      this.slotWidth = 60;
-      this.slotHeight = 82;
-      this.gap = 8;
-      this.gridRowGap = 12;
+        this.drawY = height - 235;
+        this.pileWidth = 66;
+        this.pileHeight = 44;
 
-      this.handCardWidth = 58;
-      this.handCardHeight = 78;
-      this.handY = height - 120; 
-      this.handGap = 8;
+        this.beamHalfLength = 55;
+        this.avatarSize = 36;
+        this.pivotY = this.host.safeTop + 130;
+        break;
 
-      this.drawY = height - 180;
-      this.pileWidth = 58;
-      this.pileHeight = 40;
+      case 'compact':
+        // Compact Screen (600 <= height < 700, e.g., iPhone SE)
+        this.slotWidth = 64;
+        this.slotHeight = 86;
+        this.gap = 9;
+        this.gridRowGap = 14;
 
-      this.beamHalfLength = 48;
-      this.avatarSize = 32;
-      this.pivotY = this.host.safeTop + 115;
+        this.handCardWidth = 62;
+        this.handCardHeight = 84;
+        this.handY = height - 140;
+        this.handGap = 9;
+
+        this.drawY = height - 200;
+        this.pileWidth = 62;
+        this.pileHeight = 42;
+
+        this.beamHalfLength = 50;
+        this.avatarSize = 34;
+        this.pivotY = this.host.safeTop + 125;
+        break;
+
+      case 'tiny':
+        // Tiny Screen (height < 600)
+        this.slotWidth = 60;
+        this.slotHeight = 82;
+        this.gap = 8;
+        this.gridRowGap = 12;
+
+        this.handCardWidth = 58;
+        this.handCardHeight = 78;
+        this.handY = height - 120;
+        this.handGap = 8;
+
+        this.drawY = height - 180;
+        this.pileWidth = 58;
+        this.pileHeight = 40;
+
+        this.beamHalfLength = 48;
+        this.avatarSize = 32;
+        this.pivotY = this.host.safeTop + 115;
+        break;
     }
 
     const gridW = 4 * this.slotWidth + 3 * this.gap;
@@ -83,14 +113,21 @@ export default class WoodKingdomScene extends BaseGameScene {
     this.gridX = Math.floor((width - gridW) / 2);
 
     // Ergonomic Layout Center-lower, shifted upwards slightly to remain centered and compact
-    if (width >= 500) {
-      this.gridY = Math.floor((height - gridH) / 2) + 20; 
-    } else if (height >= 750) {
-      this.gridY = Math.floor((height - gridH) / 2) - 35;
-    } else {
-      this.gridY = Math.floor((height - gridH) / 2) - 15;
+    switch (tier) {
+      case 'tablet':
+        this.gridY = Math.floor((height - gridH) / 2) + 20;
+        break;
+      case 'standard':
+        this.gridY = Math.floor((height - gridH) / 2) - 35;
+        break;
+      case 'compact':
+        this.gridY = Math.floor((height - gridH) / 2) - 25;
+        break;
+      case 'tiny':
+        this.gridY = Math.floor((height - gridH) / 2) - 15;
+        break;
     }
-    const safeLimit = this.host.safeTop + 120; 
+    const safeLimit = this.pivotY + 15;
     if (this.gridY < safeLimit) {
       this.gridY = safeLimit;
     }
@@ -132,7 +169,10 @@ export default class WoodKingdomScene extends BaseGameScene {
     this.state = new WoodKingdomState(this.level);
     // Overwrite state deck with campaign deck
     this.state.deck = this.campaignDeck.map(id => this.state.createCard(id));
-    this.state.deck.sort(() => Math.random() - 0.5);
+    for (let i = this.state.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.state.deck[i], this.state.deck[j]] = [this.state.deck[j], this.state.deck[i]];
+    }
     this.state.hand = [];
     for (let i = 0; i < 3; i++) {
       if (this.state.deck.length > 0) {
@@ -203,7 +243,7 @@ export default class WoodKingdomScene extends BaseGameScene {
     if (super.update(dt)) return;
 
     // Smooth tilt interpolation
-    this.currentTilt += (this.visualScaleTilt - this.currentTilt) * 0.08;
+    this.currentTilt = smoothLerp(this.currentTilt, this.visualScaleTilt, dt, 250);
 
     // Particle update
     if (this.particles.length > 0) {
@@ -338,8 +378,11 @@ export default class WoodKingdomScene extends BaseGameScene {
         } else {
           // Card choice reward
           const pool = ['oak', 'bird', 'bifurcated_pine', 'deathtouch_mushroom', 'nut_shield', 'grove_guardian'];
-          const shuffled = pool.sort(() => Math.random() - 0.5);
-          this.rewardCards = shuffled.slice(0, 3);
+          for (let i = pool.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+          }
+          this.rewardCards = pool.slice(0, 3);
           this.showRewardModal = true;
         }
       } else {
@@ -380,8 +423,8 @@ export default class WoodKingdomScene extends BaseGameScene {
   drawMechanicalScale(ctx) {
     const theme = this.theme;
     const centerX = this.host.width / 2;
-    const pivotY = this.host.safeTop + 130;
-    const beamHalfLength = 55;
+    const pivotY = this.pivotY;
+    const beamHalfLength = this.beamHalfLength;
     const hangingLength = 22;
 
     const angle = this.currentTilt * 0.05; // rad
@@ -496,6 +539,28 @@ export default class WoodKingdomScene extends BaseGameScene {
     }
   }
 
+  drawCardContent(ctx, card, x, y, w, h, theme) {
+    // Name (shared between drawCard and drawHandCard)
+    drawText(ctx, card.name, x + w / 2, y + 18, {
+      size: 12,
+      color: theme.color.ink,
+      align: 'center',
+      baseline: 'middle',
+      font: theme.font.title,
+      weight: 'bold'
+    });
+
+    // Attack stat (shared)
+    drawText(ctx, `${card.attack}`, x + 10, y + h - 14, {
+      size: 12,
+      color: theme.color.accent,
+      align: 'left',
+      baseline: 'middle',
+      font: theme.font.title,
+      weight: 'bold'
+    });
+  }
+
   drawCard(ctx, card, x, y, w, h, isPlayerSide, isQueue = false) {
     const theme = this.theme;
     const radius = theme.radius.sm;
@@ -523,15 +588,7 @@ export default class WoodKingdomScene extends BaseGameScene {
 
     strokeRoundRect(ctx, x, y, w, h, radius, borderColor, borderWidth);
 
-    // Name
-    drawText(ctx, card.name, x + w / 2, y + 18, {
-      size: 12,
-      color: theme.color.ink,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: 'bold'
-    });
+    this.drawCardContent(ctx, card, x, y, w, h, theme);
 
     // Sigils
     if (card.sigils && card.sigils.length > 0) {
@@ -552,16 +609,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       });
     }
 
-    // Stats
-    drawText(ctx, `${card.attack}`, x + 10, y + h - 14, {
-      size: 12,
-      color: theme.color.accent,
-      align: 'left',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: 'bold'
-    });
-
+    // HP
     drawText(ctx, `${card.hp}/${card.maxHp}`, x + w - 10, y + h - 14, {
       size: 12,
       color: theme.color.sage,
@@ -584,15 +632,7 @@ export default class WoodKingdomScene extends BaseGameScene {
     const borderWidth = isSelected ? 2.5 : 1;
     strokeRoundRect(ctx, x, y, w, h, radius, borderColor, borderWidth);
 
-    // Name
-    drawText(ctx, card.name, x + w / 2, y + 18, {
-      size: 12,
-      color: theme.color.ink,
-      align: 'center',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: 'bold'
-    });
+    this.drawCardContent(ctx, card, x, y, w, h, theme);
 
     // Cost
     let costStr = '';
@@ -630,16 +670,7 @@ export default class WoodKingdomScene extends BaseGameScene {
       });
     }
 
-    // Stats
-    drawText(ctx, `${card.attack}`, x + 10, y + h - 14, {
-      size: 12,
-      color: theme.color.accent,
-      align: 'left',
-      baseline: 'middle',
-      font: theme.font.title,
-      weight: 'bold'
-    });
-
+    // HP
     drawText(ctx, `${card.hp}`, x + w - 10, y + h - 14, {
       size: 12,
       color: theme.color.sage,
@@ -742,7 +773,7 @@ export default class WoodKingdomScene extends BaseGameScene {
         ctx.save();
         if (this.currentAnim && this.currentAnim.type === 'opponent_advance' && this.currentAnim.slotIndex === i) {
           const p = this.animTimer / this.animDuration;
-          const easeP = 1 - Math.pow(1 - p, 3); // easeOutCubic
+          const easeP = easeOutCubic(p);
           const startY = this.gridY;
           const currentY = startY + (slotY - startY) * easeP;
           ctx.translate(0, currentY - slotY);
@@ -1020,7 +1051,10 @@ export default class WoodKingdomScene extends BaseGameScene {
           this.saveCampaignProgress();
 
           this.state.deck = this.campaignDeck.map(id => this.state.createCard(id));
-          this.state.deck.sort(() => Math.random() - 0.5);
+          for (let i = this.state.deck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.state.deck[i], this.state.deck[j]] = [this.state.deck[j], this.state.deck[i]];
+          }
           this.state.hand = [];
           for (let d = 0; d < 3; d++) {
             if (this.state.deck.length > 0) {
@@ -1094,58 +1128,31 @@ export default class WoodKingdomScene extends BaseGameScene {
       }
     }
 
-    // 4. Click Draw Piles
-    // Squirrel Pile
-    if (contains(this.squirrelPileRect, point.x, point.y)) {
-      if (this.hasDrawnThisTurn) {
-        this.spawnFloatingText('本回合已摸牌', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y - 12, theme.color.gold);
-      } else if (this.state.hand.length >= 6) {
-        this.spawnFloatingText('手牌已满', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y - 12, theme.color.danger);
-      } else {
-        const card = this.state.drawCard('squirrel');
-        if (card) {
-          this.hasDrawnThisTurn = true;
-          this.syncVisualsWithState();
-          this.spawnFloatingText('+松鼠', this.squirrelPileRect.x + this.pileWidth / 2, this.squirrelPileRect.y - 12, theme.color.sage);
+    // 4. Click Draw Piles (merged handler)
+    const drawPiles = [
+      { rect: this.squirrelPileRect, type: 'squirrel', label: '+松鼠' },
+      { rect: this.sproutPileRect, type: 'sprout', label: '+嫩芽' },
+      { rect: this.deckPileRect, type: 'deck', label: null }
+    ];
+    for (const pile of drawPiles) {
+      if (contains(pile.rect, point.x, point.y)) {
+        if (this.hasDrawnThisTurn) {
+          this.spawnFloatingText('本回合已摸牌', pile.rect.x + this.pileWidth / 2, pile.rect.y - 12, theme.color.gold);
+        } else if (this.state.hand.length >= 6) {
+          this.spawnFloatingText('手牌已满', pile.rect.x + this.pileWidth / 2, pile.rect.y - 12, theme.color.danger);
+        } else if (pile.type === 'deck' && this.state.deck.length === 0) {
+          this.spawnFloatingText('牌组已空', pile.rect.x + this.pileWidth / 2, pile.rect.y - 12, theme.color.danger);
+        } else {
+          const card = this.state.drawCard(pile.type);
+          if (card) {
+            this.hasDrawnThisTurn = true;
+            this.syncVisualsWithState();
+            const label = pile.label || `+${card.name}`;
+            this.spawnFloatingText(label, pile.rect.x + this.pileWidth / 2, pile.rect.y - 12, theme.color.sage);
+          }
         }
+        return;
       }
-      return;
-    }
-
-    // Sprout Pile
-    if (contains(this.sproutPileRect, point.x, point.y)) {
-      if (this.hasDrawnThisTurn) {
-        this.spawnFloatingText('本回合已摸牌', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y - 12, theme.color.gold);
-      } else if (this.state.hand.length >= 6) {
-        this.spawnFloatingText('手牌已满', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y - 12, theme.color.danger);
-      } else {
-        const card = this.state.drawCard('sprout');
-        if (card) {
-          this.hasDrawnThisTurn = true;
-          this.syncVisualsWithState();
-          this.spawnFloatingText('+嫩芽', this.sproutPileRect.x + this.pileWidth / 2, this.sproutPileRect.y - 12, theme.color.sage);
-        }
-      }
-      return;
-    }
-
-    // Deck Pile
-    if (contains(this.deckPileRect, point.x, point.y)) {
-      if (this.hasDrawnThisTurn) {
-        this.spawnFloatingText('本回合已摸牌', this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y - 12, theme.color.gold);
-      } else if (this.state.hand.length >= 6) {
-        this.spawnFloatingText('手牌已满', this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y - 12, theme.color.danger);
-      } else if (this.state.deck.length === 0) {
-        this.spawnFloatingText('牌组已空', this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y - 12, theme.color.danger);
-      } else {
-        const card = this.state.drawCard('deck');
-        if (card) {
-          this.hasDrawnThisTurn = true;
-          this.syncVisualsWithState();
-          this.spawnFloatingText(`+${card.name}`, this.deckPileRect.x + this.pileWidth / 2, this.deckPileRect.y - 12, theme.color.sage);
-        }
-      }
-      return;
     }
 
     // End Turn Button
@@ -1202,7 +1209,7 @@ export default class WoodKingdomScene extends BaseGameScene {
   drawAvatars(ctx) {
     const theme = this.theme;
     const centerX = this.host.width / 2;
-    const pivotY = this.host.safeTop + 130;
+    const pivotY = this.pivotY;
 
     // 1. Draw Player Avatar (松鼠卫士) on the left
     this.drawSingleAvatar(ctx, centerX - 100, pivotY, 'player');
@@ -1230,206 +1237,220 @@ export default class WoodKingdomScene extends BaseGameScene {
 
   drawSingleAvatar(ctx, x, y, side) {
     const theme = this.theme;
-    const size = 36;
+    const size = this.avatarSize;
     const r = size / 2;
 
     ctx.save();
-    
+
     // Outer wooden frame plate
     fillRoundRect(ctx, x - r, y - r, size, size, 8, theme.color.paper);
     strokeRoundRect(ctx, x - r, y - r, size, size, 8, theme.color.line, 1);
 
     if (side === 'player') {
-      // 1. Player: Little Squirrel
-      // Squirrel Face Head (圆心移到 y + 1，半径 9)
-      ctx.fillStyle = theme.color.accent;
-      ctx.beginPath();
-      ctx.arc(x, y + 1, 9, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Ears (outer accent color)
-      // 耳朵起点在头部两侧，向斜上方延伸
-      ctx.fillStyle = theme.color.accent;
-      ctx.beginPath();
-      ctx.moveTo(x - 8, y - 4);
-      ctx.lineTo(x - 13, y - 14);
-      ctx.lineTo(x - 4, y - 7);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(x + 8, y - 4);
-      ctx.lineTo(x + 13, y - 14);
-      ctx.lineTo(x + 4, y - 7);
-      ctx.fill();
-
-      // Inner Ear (艾绿色)
-      ctx.fillStyle = theme.color.sage;
-      ctx.beginPath();
-      ctx.moveTo(x - 7, y - 5);
-      ctx.lineTo(x - 11, y - 12);
-      ctx.lineTo(x - 5, y - 7);
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.moveTo(x + 7, y - 5);
-      ctx.lineTo(x + 11, y - 12);
-      ctx.lineTo(x + 5, y - 7);
-      ctx.fill();
-
-      // Muzzle area (嘴部区域移到 y + 4，半径 5)
-      ctx.fillStyle = theme.color.line;
-      ctx.beginPath();
-      ctx.arc(x, y + 4, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Bead Eyes (眼珠移到 y - 1)
-      ctx.fillStyle = theme.color.ink;
-      ctx.beginPath();
-      ctx.arc(x - 3.5, y - 1, 1.2, 0, Math.PI * 2);
-      ctx.arc(x + 3.5, y - 1, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Cheeks blush (腮红移到 y + 2.5)
-      ctx.fillStyle = theme.color.danger;
-      ctx.globalAlpha = 0.5;
-      ctx.beginPath();
-      ctx.arc(x - 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
-      ctx.arc(x + 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1.0;
-
-      // Small nose (鼻子移到 y + 2.5 到 y + 4 之间)
-      ctx.fillStyle = theme.color.ink;
-      ctx.beginPath();
-      ctx.moveTo(x - 1.5, y + 2.5);
-      ctx.lineTo(x + 1.5, y + 2.5);
-      ctx.lineTo(x, y + 4);
-      ctx.fill();
-
-      // Cute small green hat (帽子戴在头顶，紧贴 y-8 的头顶)
-      ctx.fillStyle = theme.color.sage;
-      ctx.beginPath();
-      ctx.arc(x, y - 7, 5.5, Math.PI, 0);
-      ctx.fill();
-      ctx.fillRect(x - 6.5, y - 7, 13, 2);
+      this.drawPlayerAvatar(ctx, x, y, theme);
     } else {
-      // 2. Opponent boss types
       const level = this.level || 1;
       if (level === 1) {
-        // Level 1 Boss: Bud Goblin (small green creature)
-        ctx.fillStyle = theme.color.sage;
-        ctx.beginPath();
-        ctx.arc(x, y + 2, 10, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Buds on head
-        ctx.fillStyle = theme.color.sage;
-        ctx.beginPath();
-        ctx.arc(x - 4, y - 10, 3, 0, Math.PI * 2);
-        ctx.arc(x + 4, y - 10, 3, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Face inner
-        ctx.fillStyle = theme.color.bg;
-        ctx.beginPath();
-        ctx.arc(x, y + 4, 7, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Small black eyes
-        ctx.fillStyle = theme.color.ink;
-        ctx.beginPath();
-        ctx.arc(x - 3, y + 2, 1.2, 0, Math.PI * 2);
-        ctx.arc(x + 3, y + 2, 1.2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Blushing cheeks
-        ctx.fillStyle = theme.color.danger;
-        ctx.globalAlpha = 0.4;
-        ctx.beginPath();
-        ctx.arc(x - 4, y + 5, 1.5, 0, Math.PI * 2);
-        ctx.arc(x + 4, y + 5, 1.5, 0, Math.PI * 2);
-        ctx.fill();
+        this.drawBossBudGoblin(ctx, x, y, theme);
       } else if (level === 2) {
-        // Level 2 Boss: Fungal Spore Druid
-        // Cap
-        ctx.fillStyle = theme.color.danger;
-        ctx.beginPath();
-        ctx.arc(x, y, 11, Math.PI, 0);
-        ctx.fill();
-
-        // Stem body
-        ctx.fillStyle = theme.color.bg;
-        ctx.fillRect(x - 6, y, 12, 12);
-        ctx.beginPath();
-        ctx.arc(x, y + 12, 6, 0, Math.PI);
-        ctx.fill();
-
-        // Spots on cap
-        ctx.fillStyle = theme.color.white;
-        ctx.beginPath();
-        ctx.arc(x, y - 6, 2, 0, Math.PI * 2);
-        ctx.arc(x - 6, y - 3, 1.5, 0, Math.PI * 2);
-        ctx.arc(x + 6, y - 3, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Narrow squinting eyes
-        ctx.strokeStyle = theme.color.ink;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(x - 4, y + 4);
-        ctx.lineTo(x - 1, y + 6);
-        ctx.moveTo(x + 4, y + 4);
-        ctx.lineTo(x + 1, y + 6);
-        ctx.stroke();
+        this.drawBossFungalSpore(ctx, x, y, theme);
       } else {
-        // Level 3 Boss: Withered Oak King
-        // Wooden face
-        ctx.fillStyle = theme.color.accentDeep;
-        ctx.beginPath();
-        ctx.arc(x, y + 4, 11, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Crown (Gold)
-        ctx.fillStyle = theme.color.gold;
-        ctx.beginPath();
-        ctx.moveTo(x - 8, y - 6);
-        ctx.lineTo(x - 8, y - 14);
-        ctx.lineTo(x - 4, y - 10);
-        ctx.lineTo(x, y - 16);
-        ctx.lineTo(x + 4, y - 10);
-        ctx.lineTo(x + 8, y - 14);
-        ctx.lineTo(x + 8, y - 6);
-        ctx.closePath();
-        ctx.fill();
-
-        // Glowing gold eyes
-        ctx.fillStyle = theme.color.gold;
-        ctx.beginPath();
-        ctx.arc(x - 4, y + 1, 2, 0, Math.PI * 2);
-        ctx.arc(x + 4, y + 1, 2, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Angry mouth
-        ctx.strokeStyle = theme.color.ink;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(x - 5, y + 8);
-        ctx.lineTo(x, y + 6);
-        ctx.lineTo(x + 5, y + 8);
-        ctx.stroke();
-
-        // Gold branch whiskers
-        ctx.strokeStyle = theme.color.gold;
-        ctx.beginPath();
-        ctx.moveTo(x - 4, y + 9);
-        ctx.lineTo(x - 7, y + 13);
-        ctx.moveTo(x + 4, y + 9);
-        ctx.lineTo(x + 7, y + 13);
-        ctx.stroke();
+        this.drawBossOakKing(ctx, x, y, theme);
       }
     }
 
     ctx.restore();
+  }
+
+  drawPlayerAvatar(ctx, x, y, theme) {
+    // Squirrel Face Head
+    ctx.fillStyle = theme.color.accent;
+    ctx.beginPath();
+    ctx.arc(x, y + 1, 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ears (outer accent color)
+    ctx.fillStyle = theme.color.accent;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - 4);
+    ctx.lineTo(x - 13, y - 14);
+    ctx.lineTo(x - 4, y - 7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 8, y - 4);
+    ctx.lineTo(x + 13, y - 14);
+    ctx.lineTo(x + 4, y - 7);
+    ctx.fill();
+
+    // Inner Ear (艾绿色)
+    ctx.fillStyle = theme.color.sage;
+    ctx.beginPath();
+    ctx.moveTo(x - 7, y - 5);
+    ctx.lineTo(x - 11, y - 12);
+    ctx.lineTo(x - 5, y - 7);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(x + 7, y - 5);
+    ctx.lineTo(x + 11, y - 12);
+    ctx.lineTo(x + 5, y - 7);
+    ctx.fill();
+
+    // Muzzle area
+    ctx.fillStyle = theme.color.line;
+    ctx.beginPath();
+    ctx.arc(x, y + 4, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bead Eyes
+    ctx.fillStyle = theme.color.ink;
+    ctx.beginPath();
+    ctx.arc(x - 3.5, y - 1, 1.2, 0, Math.PI * 2);
+    ctx.arc(x + 3.5, y - 1, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Cheeks blush
+    ctx.fillStyle = theme.color.danger;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.arc(x - 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + 5.5, y + 2.5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+
+    // Small nose
+    ctx.fillStyle = theme.color.ink;
+    ctx.beginPath();
+    ctx.moveTo(x - 1.5, y + 2.5);
+    ctx.lineTo(x + 1.5, y + 2.5);
+    ctx.lineTo(x, y + 4);
+    ctx.fill();
+
+    // Cute small green hat
+    ctx.fillStyle = theme.color.sage;
+    ctx.beginPath();
+    ctx.arc(x, y - 7, 5.5, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(x - 6.5, y - 7, 13, 2);
+  }
+
+  drawBossBudGoblin(ctx, x, y, theme) {
+    // Level 1 Boss: Bud Goblin (small green creature)
+    ctx.fillStyle = theme.color.sage;
+    ctx.beginPath();
+    ctx.arc(x, y + 2, 10, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Buds on head
+    ctx.fillStyle = theme.color.sage;
+    ctx.beginPath();
+    ctx.arc(x - 4, y - 10, 3, 0, Math.PI * 2);
+    ctx.arc(x + 4, y - 10, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Face inner
+    ctx.fillStyle = theme.color.bg;
+    ctx.beginPath();
+    ctx.arc(x, y + 4, 7, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Small black eyes
+    ctx.fillStyle = theme.color.ink;
+    ctx.beginPath();
+    ctx.arc(x - 3, y + 2, 1.2, 0, Math.PI * 2);
+    ctx.arc(x + 3, y + 2, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Blushing cheeks
+    ctx.fillStyle = theme.color.danger;
+    ctx.globalAlpha = 0.4;
+    ctx.beginPath();
+    ctx.arc(x - 4, y + 5, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + 4, y + 5, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
+  drawBossFungalSpore(ctx, x, y, theme) {
+    // Level 2 Boss: Fungal Spore Druid
+    // Cap
+    ctx.fillStyle = theme.color.danger;
+    ctx.beginPath();
+    ctx.arc(x, y, 11, Math.PI, 0);
+    ctx.fill();
+
+    // Stem body
+    ctx.fillStyle = theme.color.bg;
+    ctx.fillRect(x - 6, y, 12, 12);
+    ctx.beginPath();
+    ctx.arc(x, y + 12, 6, 0, Math.PI);
+    ctx.fill();
+
+    // Spots on cap
+    ctx.fillStyle = theme.color.white;
+    ctx.beginPath();
+    ctx.arc(x, y - 6, 2, 0, Math.PI * 2);
+    ctx.arc(x - 6, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + 6, y - 3, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Narrow squinting eyes
+    ctx.strokeStyle = theme.color.ink;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y + 4);
+    ctx.lineTo(x - 1, y + 6);
+    ctx.moveTo(x + 4, y + 4);
+    ctx.lineTo(x + 1, y + 6);
+    ctx.stroke();
+  }
+
+  drawBossOakKing(ctx, x, y, theme) {
+    // Level 3 Boss: Withered Oak King
+    // Wooden face
+    ctx.fillStyle = theme.color.accentDeep;
+    ctx.beginPath();
+    ctx.arc(x, y + 4, 11, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crown (Gold)
+    ctx.fillStyle = theme.color.gold;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, y - 6);
+    ctx.lineTo(x - 8, y - 14);
+    ctx.lineTo(x - 4, y - 10);
+    ctx.lineTo(x, y - 16);
+    ctx.lineTo(x + 4, y - 10);
+    ctx.lineTo(x + 8, y - 14);
+    ctx.lineTo(x + 8, y - 6);
+    ctx.closePath();
+    ctx.fill();
+
+    // Glowing gold eyes
+    ctx.fillStyle = theme.color.gold;
+    ctx.beginPath();
+    ctx.arc(x - 4, y + 1, 2, 0, Math.PI * 2);
+    ctx.arc(x + 4, y + 1, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Angry mouth
+    ctx.strokeStyle = theme.color.ink;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y + 8);
+    ctx.lineTo(x, y + 6);
+    ctx.lineTo(x + 5, y + 8);
+    ctx.stroke();
+
+    // Gold branch whiskers
+    ctx.strokeStyle = theme.color.gold;
+    ctx.beginPath();
+    ctx.moveTo(x - 4, y + 9);
+    ctx.lineTo(x - 7, y + 13);
+    ctx.moveTo(x + 4, y + 9);
+    ctx.lineTo(x + 7, y + 13);
+    ctx.stroke();
   }
 
   destroy() {

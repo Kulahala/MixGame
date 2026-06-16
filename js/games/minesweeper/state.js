@@ -90,16 +90,20 @@ export default class MinesweeperState {
     return 'ok';
   }
 
-  floodReveal(row, col) {
-    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return;
-    if (this.revealed[row][col] || this.flagged[row][col]) return;
+  floodReveal(startRow, startCol) {
+    const stack = [[startRow, startCol]];
+    while (stack.length > 0) {
+      const [row, col] = stack.pop();
+      if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) continue;
+      if (this.revealed[row][col] || this.flagged[row][col]) continue;
 
-    this.revealed[row][col] = true;
+      this.revealed[row][col] = true;
 
-    if (this.grid[row][col] === 0) {
-      for (let dr = -1; dr <= 1; dr++) {
-        for (let dc = -1; dc <= 1; dc++) {
-          this.floodReveal(row + dr, col + dc);
+      if (this.grid[row][col] === 0) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            stack.push([row + dr, col + dc]);
+          }
         }
       }
     }
@@ -144,10 +148,14 @@ export default class MinesweeperState {
     return this.flagCount;
   }
 
+  getScore() {
+    return this.won ? Math.max(100, 1000 - this.getElapsed() * 2 - this.steps) : 0;
+  }
+
   saveResult() {
     if (this.saved) return;
     const time = this.getElapsed();
-    const score = this.won ? Math.max(100, 1000 - time * 2 - this.steps) : 0;
+    const score = this.getScore();
     saveScore('minesweeper', {
       score,
       time,

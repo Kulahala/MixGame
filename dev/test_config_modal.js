@@ -1,6 +1,6 @@
 import assert from 'assert';
-import ConfigModal from './config-modal.js';
-import elegantTheme from '../themes/elegant.js';
+import ConfigModal from '../js/ui/config-modal.js';
+import elegantTheme from '../js/themes/elegant.js';
 
 // Mock host object
 const mockHost = {

@@ -66,7 +66,7 @@ const GAME_TIPS = {
 
 /**
  * 获取随机语录或游戏提示
- * @param {string} sceneId — 场景标识 ('menu', 'sudoku', 'huarongdao', 'game2048', 'memory', 'minesweeper')
+ * @param {string} sceneId — 场景标识 ('menu', 'sudoku', 'huarongdao', 'game2048', 'memory', 'minesweeper', 'slitherlink', 'woodkingdom', 'onestroke')
  * @returns {string} 随机挑选的一条语录或 Tips
  */
 export function getRandomQuote(sceneId = 'menu') {

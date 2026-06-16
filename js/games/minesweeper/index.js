@@ -4,21 +4,27 @@ import Button from '../../ui/button.js';
 import MinesweeperState from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import { getRandomQuote } from '../../ui/quotes.js';
+import { getScreenTier } from '../../core/layout.js';
+import { easeOutCubic } from '../../ui/animation.js';
 
 const LONG_PRESS_MS = 400;
 const CANCEL_DRAG_PX = 12;
+const REVEAL_DURATION = 150;
 
-// 数字颜色映射
-const NUMBER_COLORS = {
-  1: '#52677a',  // 蓝
-  2: '#536b5d',  // 绿
-  3: '#a54b44',  // 红
-  4: '#2c3e50',  // 深蓝
-  5: '#7a4f3f',  // 棕
-  6: '#4a7b7b',  // 青
-  7: '#25221d',  // 黑
-  8: '#756f64',  // 灰
-};
+// 数字颜色映射（使用主题色）
+function getNumberColor(num, theme) {
+  switch (num) {
+    case 1: return theme.color.blue;
+    case 2: return theme.color.sage;
+    case 3: return theme.color.danger;
+    case 4: return '#2c3e50';
+    case 5: return theme.color.accent;
+    case 6: return '#4a7b7b';
+    case 7: return theme.color.ink;
+    case 8: return theme.color.muted;
+    default: return theme.color.ink;
+  }
+}
 
 export default class MinesweeperScene extends BaseGameScene {
   constructor(host, options = {}) {
@@ -30,12 +36,15 @@ export default class MinesweeperScene extends BaseGameScene {
     this.resultShown = false;
     this._touch = null;
     this.bottomQuote = getRandomQuote('minesweeper');
+    this.revealAnimCells = null; // Map<"r,c", {r,c,progress}> for reveal animation
   }
 
   init() {
     const width = this.host.width;
     const height = this.host.height;
-    const isTablet = width >= 500 && height >= 600 && height >= width;
+    const tier = getScreenTier(width, height);
+    const isTablet = tier === 'tablet';
+    this._screenTier = tier;
 
     // 计算网格尺寸
     this.cellSize = Math.min(
@@ -46,19 +55,38 @@ export default class MinesweeperScene extends BaseGameScene {
     if (isTablet && this.cellSize > 46) {
       this.cellSize = 46;
     }
+    if (tier === 'compact' && this.cellSize > 36) {
+      this.cellSize = 36;
+    }
+    if (tier === 'tiny' && this.cellSize > 30) {
+      this.cellSize = 30;
+    }
 
     this.boardWidth = this.cellSize * this.state.cols;
     this.boardHeight = this.cellSize * this.state.rows;
     this.boardX = (width - this.boardWidth) / 2;
 
-    const baseOffset = isTablet ? 180 : 120;
-    const heightPadding = isTablet ? 300 : 220;
+    let baseOffset, heightPadding;
+    if (tier === 'tablet') {
+      baseOffset = 180;
+      heightPadding = 300;
+    } else if (tier === 'standard') {
+      baseOffset = 120;
+      heightPadding = 220;
+    } else if (tier === 'compact') {
+      baseOffset = 110;
+      heightPadding = 200;
+    } else { // tiny
+      baseOffset = 100;
+      heightPadding = 180;
+    }
     this.boardY = this.host.safeTop + baseOffset + Math.max(0, (height - heightPadding - this.boardHeight) / 2);
+    this.boardY = Math.max(this.boardY, this.host.safeTop + 130);
 
     // 模式切换按钮 (移至棋盘下方，更符合大拇指单手交互，并空出顶部避让胶囊)
     this.modeButton = new Button({
       x: width / 2 - 37,
-      y: this.boardY + this.boardHeight + (isTablet ? 24 : 16),
+      y: this.boardY + this.boardHeight + (tier === 'tablet' ? 24 : tier === 'compact' ? 14 : tier === 'tiny' ? 10 : 16),
       w: 74,
       h: 36,
       label: '标记',
@@ -85,17 +113,30 @@ export default class MinesweeperScene extends BaseGameScene {
     this.modeButton.label = '标记';
     this.modeButton.variant = 'ghost';
     this.closeModal();
+    this.revealAnimCells = null;
     this.bottomQuote = getRandomQuote('minesweeper');
   }
 
   update(dt = 16) {
     if (super.update(dt)) return;
 
+    // 方块揭开动画进度更新
+    if (this.revealAnimCells) {
+      let allDone = true;
+      for (const cell of this.revealAnimCells.values()) {
+        cell.progress += dt / REVEAL_DURATION;
+        if (cell.progress < 1) allDone = false;
+      }
+      if (allDone) {
+        this.revealAnimCells = null;
+      }
+    }
+
     // 游戏完成时展示结果弹窗（由 state.reveal 触发 completed）
     if (this.state.completed && !this.resultShown) {
       this.resultShown = true;
       if (this.state.won) {
-        const currentScore = this.state.won ? Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps) : 0;
+        const currentScore = this.state.getScore();
         const history = getHistory('minesweeper').map((h) => ({
           label: `${h.score}分 · ${h.time}s`,
           highlight: h.score === currentScore,
@@ -134,11 +175,23 @@ export default class MinesweeperScene extends BaseGameScene {
     const safeTop = this.host.safeTop;
     const width = this.host.width;
     const height = this.host.height;
-    const isTablet = width >= 500 && height >= 600 && height >= width;
+    const tier = this._screenTier || getScreenTier(width, height);
     const flagged = this.state.getFlagCount();
 
-    const titleY = safeTop + (isTablet ? 110 : 90);
-    const statsY = safeTop + (isTablet ? 140 : 116);
+    let titleY, statsY;
+    if (tier === 'tablet') {
+      titleY = safeTop + 110;
+      statsY = safeTop + 140;
+    } else if (tier === 'standard') {
+      titleY = safeTop + 90;
+      statsY = safeTop + 116;
+    } else if (tier === 'compact') {
+      titleY = safeTop + 80;
+      statsY = safeTop + 106;
+    } else { // tiny
+      titleY = safeTop + 70;
+      statsY = safeTop + 96;
+    }
 
     drawText(ctx, '扫雷', this.host.width / 2, titleY, {
       size: 23,
@@ -182,6 +235,22 @@ export default class MinesweeperScene extends BaseGameScene {
         const cy = boardY + r * cellSize;
 
         if (state.revealed[r][c]) {
+          // ── 动画：缩放 + 淡入 ──────────────────────────
+          const animKey = `${r},${c}`;
+          const animCell = this.revealAnimCells ? this.revealAnimCells.get(animKey) : null;
+          if (animCell) {
+            const eased = easeOutCubic(Math.min(animCell.progress, 1));
+            const scale = 0.5 + 0.5 * eased;
+            const alpha = eased;
+            ctx.save();
+            ctx.globalAlpha *= alpha;
+            const cxCenter = cx + cellSize / 2;
+            const cyCenter = cy + cellSize / 2;
+            ctx.translate(cxCenter, cyCenter);
+            ctx.scale(scale, scale);
+            ctx.translate(-cxCenter, -cyCenter);
+          }
+
           // 已揭开：暖灰底色（表现为凹陷沉底状态）
           fillRoundRect(ctx, cx + gap, cy + gap, cellSize - gap * 2, cellSize - gap * 2, radius, theme.color.paperDeep);
 
@@ -193,12 +262,16 @@ export default class MinesweeperScene extends BaseGameScene {
             const num = state.grid[r][c];
             drawText(ctx, String(num), cx + cellSize / 2, cy + cellSize / 2 + 1, {
               size: cellSize * 0.48,
-              color: NUMBER_COLORS[num] || theme.color.ink,
+              color: getNumberColor(num, theme),
               align: 'center',
               baseline: 'middle',
               font: theme.font.body,
               weight: '600',
             });
+          }
+
+          if (animCell) {
+            ctx.restore();
           }
         } else {
           // 未揭开：纸白底色（表现为立体凸起状态）
@@ -314,7 +387,28 @@ export default class MinesweeperScene extends BaseGameScene {
     if (this.isFlagMode) {
       this.state.toggleFlag(touch.row, touch.col);
     } else {
+      // 快照当前已揭开状态，用于动画差异计算
+      const prevRevealed = this.state.revealed.map(row => [...row]);
       this.state.reveal(touch.row, touch.col);
+
+      // 仅在游戏未结束时收集新揭开的格子做动画（踩雷/通关时弹窗覆盖，不额外做动画）
+      if (!this.state.completed) {
+        const newCells = [];
+        for (let r = 0; r < this.state.rows; r++) {
+          for (let c = 0; c < this.state.cols; c++) {
+            if (this.state.revealed[r][c] && !prevRevealed[r][c]) {
+              newCells.push({ r, c, progress: 0 });
+            }
+          }
+        }
+        if (newCells.length > 0) {
+          const map = new Map();
+          for (const cell of newCells) {
+            map.set(`${cell.r},${cell.c}`, cell);
+          }
+          this.revealAnimCells = map;
+        }
+      }
     }
   }
 

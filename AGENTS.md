@@ -7,7 +7,7 @@ This is a WeChat Mini Game project. The runtime entry is `game.js`, which import
 - `js/main.js`: creates the canvas context and starts the collection host.
 - `js/core/`: scene switching, input dispatch, and local score storage.
 - `js/scenes/`: top-level scenes such as the game selection menu.
-- `js/games/`: standalone games; current modules are `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, and `memory/`.
+- `js/games/`: standalone games; current modules are `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, and `onestroke/`.
 - `js/themes/` and `js/ui/`: visual tokens and reusable canvas UI helpers.
 - `js/libs/`: third-party or vendored utilities (currently empty; previously held `tinyemitter.js` which was removed).
 - `dev/`: browser-only debug shell and wx/canvas adapter.
@@ -43,16 +43,17 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 
 - **黄金交互区（自适应中下部布局）**：为了方便右手持机时单手大拇指舒适游玩，游戏的核心操作区域（如棋盘、网格、按钮组）必须使用自适应高度计算将其定位在屏幕中下部（通常为垂直剩余空间居中稍偏下，如 `Y = Math.floor((screenHeight - boardHeight) / 2) + 30`）。
 - **安全边界保护**：在计算高度偏移时，必须限制最小 Y 坐标（通常为 `safeTop + 130` 左右），防止操作区遮挡顶部的返回/重置等功能按钮。
-- **高质感阻尼动效**：界面切换和滑块移动不得使用生硬的瞬闪或单纯线性过渡，必须采用 Easing 缓动曲线（如弹窗进入使用 `easeOutBack` 微弹，退出使用 `easeInQuad`；方块滑动使用 `easeOutCubic` 阻尼减速），动画时长保持在 150ms-220ms 之间，以实现极佳 of 物理仿真质感。
+- **高质感阻尼动效**：界面切换和滑块移动不得使用生硬的瞬闪或单纯线性过渡，必须采用 Easing 缓动曲线（如弹窗进入使用 `easeOutBack` 微弹，退出使用 `easeInQuad`；方块滑动使用 `easeOutCubic` 阻尼减速），动画时长保持在 150ms-220ms 之间，以实现极佳 of 物理仿真质感。所有缓动函数统一从 `js/ui/animation.js` 导入（`easeOutQuart`、`easeInQuad`、`easeOutBack`、`easeOutCubic`、`smoothLerp`），禁止在业务代码中内联缓动公式。
 - **全面屏自适应布局（Responsive Home Indicator Buffer）**：底部手牌与按钮堆必须防切，但又不能由于死板上移导致矮屏幕下中段拥挤。必须使用响应式计算，在大屏（如 `height >= 750`）上将底部堆上提 30px，而在矮屏幕上自动微缩还原，完美契合全面屏 Home 小黑条的安全适配。
 - **视觉宽度对齐边线（Horizontal Edge Alignment）**：下方的独立摸牌堆、回合结束等功能行的总宽必须限宽并居中对齐到与中间棋盘一样的物理宽度（如 310px），形成隐形的左右垂直参考边线，避免由于过度分散显得左右空旷与不协调。
 - **用户友好度编号（Friendly Indexes）**：在面向用户展现的占位符或序号中，必须将底层 0-indexed 数据展示为 1-based（如列号 0-3 映射为 1-4），以提供契合普通用户心智模型的极佳用户体验。
 - **同排卡牌多行信息水平绝对对齐（Symmetric Y-Alignment for Multi-line Cards）**：若卡牌内文字信息存在动态增减（如已游玩成绩），必须让同排所有卡牌的标题与简介统一固定在相同的 Y 轴高度上，未有数据的卡牌下方预留等高空白，避免由于字数或行数不同造成横向水平参考高低参差的无序杂乱感。
 - **拉伸弹窗触控防误触与热区联动（Accordion Modal Safety & Heatmap Binding）**：在实现基于插值动态伸缩拉伸的弹窗（风琴弹窗）时，必须在高度过渡动画未执行完毕前（例如淡入因子 `rulesAlpha` 处于过渡态时）通过拦截限制按钮和配置项的点击以防误触；同时，所有交互项的触控热区绝对坐标必须与当前高度动态绑定以防错位。
-- **三阶跨屏自适应兼容方案（3-Tier Responsive Layout）**：所有游戏场景的 `init()` 必须遵循统一的三阶屏幕判定逻辑，绝不允许对棋盘/网格大小硬编码单一上限值。判定规则如下：
-  - **平板/大宽屏（Tablet）**：`const isTablet = width >= 500 && height >= 600 && height >= width;` — 主动放大核心元素（棋盘/格子/卡牌），使大屏设备的游玩体验饱满舒适，避免过多留白。
-  - **标准全面屏手机（Standard）**：`height >= 700`（且非平板）— 维持标准黄金尺寸，优先大拇指单手操作舒适度。
-  - **矮小屏手机（Compact，如 iPhone SE2）**：`height < 700`（进一步 `height < 600` 为极限档）— 先压缩元素间距，实在过小再按比例缩小棋盘/格子，确保所有操作区均不超出屏幕且不遮挡 safeTop。
+- **三阶跨屏自适应兼容方案（3-Tier Responsive Layout）**：所有游戏场景的 `init()` 必须使用 `js/core/layout.js` 的 `getScreenTier(width, height)` 获取屏幕档位，绝不允许对棋盘/网格大小硬编码单一上限值。档位定义如下：
+  - **`'tablet'`（平板/大宽屏）**：`width >= 500 && height >= 600 && height >= width` — 主动放大核心元素（棋盘/格子/卡牌），使大屏设备的游玩体验饱满舒适，避免过多留白。
+  - **`'standard'`（标准全面屏手机）**：`height >= 700`（且非平板）— 维持标准黄金尺寸，优先大拇指单手操作舒适度。
+  - **`'compact'`（矮小屏手机，如 iPhone SE2）**：`height >= 600`（且 < 700）— 压缩元素间距。
+  - **`'tiny'`（极限小屏）**：`height < 600` — 按比例缩小棋盘/格子，确保所有操作区均不超出屏幕且不遮挡 safeTop。
   - 具体各游戏的三阶参数参见对应 `js/games/*/index.js` 的 `init()` 方法。
 
 ## Design System & Color Palette (设计系统与配色规范)
@@ -82,7 +83,7 @@ Keep runtime paths stable and explicit. If future assets are added, keep them in
 No automated test framework is configured. Validate changes in WeChat Developer Tools or the browser debug shell before submission. At minimum, verify:
 
 - The menu renders and each game card opens the correct configuration or game.
-- Sudoku supports selecting cells, entering numbers, immediate mistake marking, undo, note mode, restart, result modal, and return to menu.
+- Sudoku supports selecting cells, entering numbers, immediate mistake marking, undo, erase, note mode, restart, result modal, and return to menu.
 - Digital Huarongdao supports size selection, click or swipe movement, restart, result modal, and return to menu.
 - Minesweeper supports difficulty selection, click to reveal, long-press to flag, win/lose detection, and return to menu.
 - 2048 supports target selection, swipe to merge tiles, win detection, and return to menu.

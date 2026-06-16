@@ -86,6 +86,7 @@ export default class SudokuBoardState {
     if (this.history.length === 0 || this.completed) return false;
     const action = this.history.pop();
     this.board[action.r][action.c] = action.prevVal;
+    if (this.mistakeMap[action.r][action.c]) this.mistakes--;
     this.mistakeMap[action.r][action.c] = action.prevMistake;
     this.notesMap[action.r][action.c] = [...action.prevNotes];
     return true;

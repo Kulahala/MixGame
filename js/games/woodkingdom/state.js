@@ -124,8 +124,11 @@ export class WoodKingdomState {
       'nut_shield', 'grove_guardian'
     ];
     this.deck = defaultDeckIds.map(id => this.createCard(id));
-    // Simple shuffle
-    this.deck.sort(() => Math.random() - 0.5);
+    // Fisher-Yates shuffle
+    for (let i = this.deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
+    }
 
     // Initial draw
     for (let i = 0; i < 3; i++) {
@@ -401,6 +404,9 @@ export class WoodKingdomState {
         break;
       }
       this.executeSingleAttack(attackerSide, fromIdx, targetIdx, card, log);
+      if (this.isGameOver().finished) {
+        break;
+      }
     }
   }
 

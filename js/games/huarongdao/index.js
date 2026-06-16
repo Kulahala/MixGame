@@ -2,7 +2,6 @@ import BaseGameScene from '../../core/game-scene-base.js';
 import { getHistory } from '../../core/storage.js';
 import { contains, drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import HuarongdaoState from './state.js';
-import InputDispatcher from '../../core/input-dispatcher.js';
 import { getRandomQuote } from '../../ui/quotes.js';
 import Button from '../../ui/button.js';
 
@@ -12,23 +11,9 @@ export default class HuarongdaoScene extends BaseGameScene {
 
     this.state = new HuarongdaoState(options.size || 4);
 
-    this.buttons = [];
     this.touchStartPoint = null;
     this.touchStartGrid = null;
-    this.input = new InputDispatcher();
     this.bottomQuote = getRandomQuote('huarongdao');
-
-    // Exit Animation States
-    this.isExiting = false;
-    this.exitTime = 0;
-    this.exitDuration = 200; // ms
-    this.exitCallback = null;
-  }
-
-  exit(callback) {
-    this.isExiting = true;
-    this.exitTime = 0;
-    this.exitCallback = callback;
   }
 
   init() {
@@ -117,7 +102,7 @@ export default class HuarongdaoScene extends BaseGameScene {
     if (!this.state.completed && this.state.isSolved()) {
       this.state.completed = true;
       this.state.saveResult();
-      const currentScore = Math.max(100, 1000 - this.state.getElapsed() * 2 - this.state.steps * 10);
+      const currentScore = this.state.getScore();
       const history = getHistory('huarongdao').map((h) => ({
         label: `${h.steps}步 · ${h.time}s`,
         highlight: h.score === currentScore,
@@ -161,8 +146,6 @@ export default class HuarongdaoScene extends BaseGameScene {
       baseline: 'middle',
       font: theme.font.body,
     });
-
-    ctx.restore();
   }
 
   renderHeader(ctx) {
@@ -269,7 +252,4 @@ export default class HuarongdaoScene extends BaseGameScene {
     this.touchStartGrid = null;
   }
 
-  destroy() {
-    super.destroy();
-  }
 }

@@ -5,6 +5,7 @@ import { getScores } from '../core/storage.js';
 import { GAMES } from '../games/registry.js';
 import InputDispatcher from '../core/input-dispatcher.js';
 import { getRandomQuote } from '../ui/quotes.js';
+import { easeOutQuart, easeInQuad, easeOutBack } from '../ui/animation.js';
 
 export default class MenuScene {
   constructor(host) {
@@ -241,7 +242,7 @@ export default class MenuScene {
 
     // 进场动画曲线：easeOutQuart (比线性更具阻尼感，快速冲入然后平滑减速)
     const progress = Math.min(1, this.host.sceneAge / 200);
-    const ease = 1 - Math.pow(1 - progress, 4);
+    const ease = easeOutQuart(progress);
     const reveal = ease;
 
     // 退场动画曲线：easeInQuad (加速移出淡出)
@@ -249,7 +250,7 @@ export default class MenuScene {
     let exitOffset = 0;
     if (this.isExiting) {
       const p = this.exitTime / this.exitDuration;
-      const easeExit = p * p;
+      const easeExit = easeInQuad(p);
       exitAlpha = 1 - easeExit;
       exitOffset = -easeExit * 16;
     }
@@ -467,7 +468,7 @@ export default class MenuScene {
     // 瀑布式弹性微弹进入动效：采用 easeOutBack 轻回弹
     const t = Math.min(1, Math.max(0, (this.host.sceneAge - index * 70) / 340));
     const c1 = 0.5; // 低调的回弹幅度
-    const ease = t === 1 ? 1 : 1 + (c1 + 1) * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    const ease = t === 1 ? 1 : easeOutBack(t, 0.5);
     const reveal = Math.min(1, t * 1.5);
 
     const pressDepth = card.isPressed ? 3 : 0;
