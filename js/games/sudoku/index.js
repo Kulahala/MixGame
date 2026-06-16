@@ -13,6 +13,15 @@ export default class SudokuScene extends BaseGameScene {
 
     let initialPuzzle, solution;
     const holes = options.holes || 20;
+    if (options.holes) {
+      const generated = generateSudoku(options.holes);
+      initialPuzzle = generated.puzzle;
+      solution = generated.solution;
+    } else {
+      initialPuzzle = PUZZLE;
+      solution = SOLUTION;
+    }
+
     let diffLabel = '简单';
     if (holes === 40) diffLabel = '普通';
     if (holes === 55) diffLabel = '困难';
