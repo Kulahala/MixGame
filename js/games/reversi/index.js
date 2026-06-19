@@ -422,7 +422,7 @@ export default class ReversiScene extends BaseGameScene {
     ctx.save();
     ctx.strokeStyle = '#3d5947';
     ctx.lineWidth = 1.5;
-    for (let i = 0; i <= 8; i++) {
+    for (let i = 1; i < 8; i++) {
       const pos = i * cellSize;
       ctx.beginPath();
       ctx.moveTo(boardX, boardY + pos);
