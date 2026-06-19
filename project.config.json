@@ -27,7 +27,7 @@
     "useCompilerPlugins": false
   },
   "compileType": "game",
-  "libVersion": "latest",
+  "libVersion": "3.15.2",
   "appid": "wxb28d3899ee9d050f",
   "projectname": "片刻游",
   "condition": {
@@ -51,17 +51,50 @@
   "simulatorPluginLibVersion": {},
   "packOptions": {
     "ignore": [
-      { "type": "folder", "value": "dev" },
-      { "type": "folder", "value": ".agents" },
-      { "type": "folder", "value": ".slim" },
-      { "type": "file", "value": "plan.md" },
-      { "type": "file", "value": "ORIGINAL_REQUEST.md" },
-      { "type": "file", "value": "PROJECT.md" },
-      { "type": "file", "value": "AGENTS.md" },
-      { "type": "file", "value": "ARCHITECTURE.md" },
-      { "type": "file", "value": ".eslintrc.js" },
-      { "type": "file", "value": ".gitignore" },
-      { "type": "file", "value": ".ignore" }
+      {
+        "value": "dev",
+        "type": "folder"
+      },
+      {
+        "value": ".agents",
+        "type": "folder"
+      },
+      {
+        "value": ".slim",
+        "type": "folder"
+      },
+      {
+        "value": "plan.md",
+        "type": "file"
+      },
+      {
+        "value": "ORIGINAL_REQUEST.md",
+        "type": "file"
+      },
+      {
+        "value": "PROJECT.md",
+        "type": "file"
+      },
+      {
+        "value": "AGENTS.md",
+        "type": "file"
+      },
+      {
+        "value": "ARCHITECTURE.md",
+        "type": "file"
+      },
+      {
+        "value": ".eslintrc.js",
+        "type": "file"
+      },
+      {
+        "value": ".gitignore",
+        "type": "file"
+      },
+      {
+        "value": ".ignore",
+        "type": "file"
+      }
     ],
     "include": []
   },

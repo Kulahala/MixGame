@@ -66,7 +66,8 @@ export default class GameHost {
     const config = getGameConfig(id);
     if (config && config.sceneClass) {
       const SceneClass = config.sceneClass;
-      this.setScene(new SceneClass(this, options));
+      const sceneOptions = Object.assign({}, options, { gameId: id });
+      this.setScene(new SceneClass(this, sceneOptions));
     }
   }
 

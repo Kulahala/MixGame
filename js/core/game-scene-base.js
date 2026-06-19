@@ -2,6 +2,7 @@ import Button from '../ui/button.js';
 import ResultModal from '../ui/result-modal.js';
 import InputDispatcher from './input-dispatcher.js';
 import { easeOutQuart, easeInQuad } from '../ui/animation.js';
+import { getRandomQuote } from '../ui/quotes.js';
 
 /**
  * BaseGameScene — 游戏场景基类
@@ -29,6 +30,10 @@ export default class BaseGameScene {
     this.exitTime = 0;
     this.exitDuration = 200;
     this.exitCallback = null;
+    
+    // Bottom quote auto switcher state
+    this.gameId = options.gameId || null;
+    this.quoteTimer = 0;
   }
 
   // ── 退场动画 ────────────────────────────────────
@@ -136,6 +141,16 @@ export default class BaseGameScene {
       }
       return true; // 正在退场，跳过游戏逻辑
     }
+
+    // 停留超过 30s 自动切换下一句 tips
+    if (this.gameId && this.bottomQuote !== undefined) {
+      this.quoteTimer = (this.quoteTimer || 0) + dt;
+      if (this.quoteTimer >= 30000) {
+        this.quoteTimer = 0;
+        this.bottomQuote = getRandomQuote(this.gameId);
+      }
+    }
+
     return false; // 正常更新
   }
 

@@ -18,6 +18,7 @@ export default class MenuScene {
 
     // 随机语录
     this.bottomQuote = getRandomQuote('menu');
+    this.quoteTimer = 0;
 
     // Exit Animation States
     this.isExiting = false;
@@ -66,6 +67,13 @@ export default class MenuScene {
         const cb = this.exitCallback;
         this.exitCallback = null;
         cb();
+      }
+    } else {
+      // 停留超过 30s 自动切换下一句 tips
+      this.quoteTimer = (this.quoteTimer || 0) + dt;
+      if (this.quoteTimer >= 30000) {
+        this.quoteTimer = 0;
+        this.bottomQuote = getRandomQuote('menu');
       }
     }
   }
