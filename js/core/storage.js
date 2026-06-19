@@ -50,6 +50,13 @@ const DEFAULT_SCORES = {
     plays: 0,
     history: [],
   },
+  reversi: {
+    bestScore: 0,
+    bestTime: 0,
+    bestSteps: 0,
+    plays: 0,
+    history: [],
+  },
 };
 
 function cloneDefaultScores() {

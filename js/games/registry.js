@@ -6,6 +6,7 @@ import MemoryScene from './memory/index.js';
 import SlitherlinkScene from './slitherlink/index.js';
 import WoodKingdomScene from './woodkingdom/index.js';
 import OneStrokeScene from './onestroke/index.js';
+import ReversiScene from './reversi/index.js';
 
 
 export const GAMES = [
@@ -149,6 +150,24 @@ export const GAMES = [
     ],
     themeColor: '#655b6c',
     iconText: '画'
+  },
+  {
+    id: 'reversi',
+    name: '黑白棋',
+    sceneClass: ReversiScene,
+    description: '经典人机对弈 · 翻转黑白',
+    rules: '【黑白棋规则说明】\n1. 只能在可夹击对手棋子的空白位置落子。\n2. 落子后，被夹在己方棋子之间的对方棋子将全部翻转为己方颜色。\n3. 如果自己没有合法位置可下，将自动被跳过回合（Pass）。\n4. 棋盘填满或双方都无子可下时游戏结束，棋子多的一方获胜。',
+    formatScore: (scoreObj) => {
+      return scoreObj && scoreObj.bestScore ? `最佳 ${scoreObj.bestScore} 分 · ${scoreObj.bestTime}s` : null;
+    },
+    configTitle: '黑白棋 AI 难度选择',
+    configOptions: [
+      { label: '简单模式', value: { difficulty: 'easy' } },
+      { label: '普通对弈', value: { difficulty: 'normal' } },
+      { label: '大师挑战', value: { difficulty: 'hard' } }
+    ],
+    themeColor: '#567d65',
+    iconText: '棋'
   }
 ];
 
