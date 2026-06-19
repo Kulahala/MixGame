@@ -220,14 +220,14 @@ export default class ReversiScene extends BaseGameScene {
     }
   }
 
-  handleTouch(x, y) {
-    if (this.modal) return;
+  onTouchStart(point) {
+    if (this.isExiting) return;
+    if (this.input.onTouchStart(point.x, point.y)) return;
 
-    if (this.isAnimating() || this.state.turn !== 1 || this.completed) {
+    if (this.modal || this.completed || this.isAnimating() || this.state.turn !== 1) {
       return;
     }
 
-    const point = { x, y };
     const cell = hitTestGrid(point, this.boardX, this.boardY, this.cellSize, 0, 8, 8);
     if (!cell) return;
 
