@@ -172,8 +172,8 @@ export default class ReversiScene extends BaseGameScene {
         ];
 
         const history = getHistory('reversi', this.state.difficulty).map(h => ({
-          label: `${h.blackCount}子 · ${h.time}s`,
-          highlight: h.blackCount === gameResult.blackCount && h.time === this.state.getElapsed()
+          label: `${h.score}分 · ${h.time}s`,
+          highlight: h.score === finalScore && h.time === this.state.getElapsed()
         }));
 
         const title = won ? '棋开得胜！' : (gameResult.winner === 2 ? '棋差一招' : '握手言和');
