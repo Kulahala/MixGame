@@ -36,7 +36,23 @@ export function drawText(ctx, text, x, y, options = {}) {
   ctx.textAlign = align;
   ctx.textBaseline = baseline;
   ctx.font = `${weight} ${size}px ${font}`;
-  ctx.fillText(text, x, y);
+
+  const lines = String(text).split('\n');
+  if (lines.length > 1) {
+    const lineHeight = options.lineHeight || size * 1.4;
+    const totalH = (lines.length - 1) * lineHeight;
+    let startY = y;
+    if (baseline === 'middle') {
+      startY = y - totalH / 2;
+    } else if (baseline === 'bottom') {
+      startY = y - totalH;
+    }
+    lines.forEach((line, idx) => {
+      ctx.fillText(line, x, startY + idx * lineHeight);
+    });
+  } else {
+    ctx.fillText(text, x, y);
+  }
 }
 
 /**

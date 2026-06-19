@@ -34,6 +34,9 @@ export default class BaseGameScene {
     // Bottom quote auto switcher state
     this.gameId = options.gameId || null;
     this.quoteTimer = 0;
+    this.quoteAlpha = 1.0;
+    this.quoteTransitionState = null; // null | 'fadeOut' | 'fadeIn'
+    this.nextQuote = '';
   }
 
   // ── 退场动画 ────────────────────────────────────
@@ -142,12 +145,30 @@ export default class BaseGameScene {
       return true; // 正在退场，跳过游戏逻辑
     }
 
-    // 停留超过 30s 自动切换下一句 tips
+    // 停留超过 30s 自动切换下一句 tips (包含平滑淡出淡入动效)
     if (this.gameId && this.bottomQuote !== undefined) {
-      this.quoteTimer = (this.quoteTimer || 0) + dt;
-      if (this.quoteTimer >= 30000) {
-        this.quoteTimer = 0;
-        this.bottomQuote = getRandomQuote(this.gameId);
+      if (this.quoteTransitionState === 'fadeOut') {
+        this.quoteAlpha -= dt / 300; // 300ms 淡出
+        if (this.quoteAlpha <= 0) {
+          this.quoteAlpha = 0;
+          this.bottomQuote = this.nextQuote;
+          this.quoteTransitionState = 'fadeIn';
+        }
+      } else if (this.quoteTransitionState === 'fadeIn') {
+        this.quoteAlpha += dt / 300; // 300ms 淡入
+        if (this.quoteAlpha >= 1) {
+          this.quoteAlpha = 1.0;
+          this.quoteTransitionState = null;
+        }
+      } else {
+        this.quoteTimer = (this.quoteTimer || 0) + dt;
+        if (this.quoteTimer >= 30000) {
+          this.quoteTimer = 0;
+          this.nextQuote = getRandomQuote(this.gameId);
+          if (this.nextQuote !== this.bottomQuote) {
+            this.quoteTransitionState = 'fadeOut';
+          }
+        }
       }
     }
 
@@ -161,6 +182,28 @@ export default class BaseGameScene {
    */
   render(ctx) {
     const theme = this.theme;
+
+    // 拦截底部的语录绘制，实现透明度渐变
+    const originalFillText = ctx.fillText;
+    const self = this;
+    ctx.fillText = function(text, x, y, maxWidth) {
+      if (text === self.bottomQuote) {
+        const originalAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = originalAlpha * (self.quoteAlpha !== undefined ? self.quoteAlpha : 1);
+        if (maxWidth !== undefined) {
+          originalFillText.call(this, text, x, y, maxWidth);
+        } else {
+          originalFillText.call(this, text, x, y);
+        }
+        ctx.globalAlpha = originalAlpha;
+      } else {
+        if (maxWidth !== undefined) {
+          originalFillText.call(this, text, x, y, maxWidth);
+        } else {
+          originalFillText.call(this, text, x, y);
+        }
+      }
+    };
 
     // 进场动画
     const progress = Math.min(1, this.host.sceneAge / 320);
@@ -204,6 +247,9 @@ export default class BaseGameScene {
     if (this.modal) {
       this.modal.render(ctx, theme);
     }
+
+    // 还原 fillText
+    ctx.fillText = originalFillText;
   }
 
   // ── 触摸事件 ────────────────────────────────────

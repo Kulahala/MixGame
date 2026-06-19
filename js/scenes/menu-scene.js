@@ -19,6 +19,9 @@ export default class MenuScene {
     // 随机语录
     this.bottomQuote = getRandomQuote('menu');
     this.quoteTimer = 0;
+    this.quoteAlpha = 1.0;
+    this.quoteTransitionState = null; // null | 'fadeOut' | 'fadeIn'
+    this.nextQuote = '';
 
     // Exit Animation States
     this.isExiting = false;
@@ -69,11 +72,29 @@ export default class MenuScene {
         cb();
       }
     } else {
-      // 停留超过 30s 自动切换下一句 tips
-      this.quoteTimer = (this.quoteTimer || 0) + dt;
-      if (this.quoteTimer >= 30000) {
-        this.quoteTimer = 0;
-        this.bottomQuote = getRandomQuote('menu');
+      // 停留超过 30s 自动切换下一句 tips (包含平滑淡出淡入动效)
+      if (this.quoteTransitionState === 'fadeOut') {
+        this.quoteAlpha -= dt / 300; // 300ms 淡出
+        if (this.quoteAlpha <= 0) {
+          this.quoteAlpha = 0;
+          this.bottomQuote = this.nextQuote;
+          this.quoteTransitionState = 'fadeIn';
+        }
+      } else if (this.quoteTransitionState === 'fadeIn') {
+        this.quoteAlpha += dt / 300; // 300ms 淡入
+        if (this.quoteAlpha >= 1) {
+          this.quoteAlpha = 1.0;
+          this.quoteTransitionState = null;
+        }
+      } else {
+        this.quoteTimer = (this.quoteTimer || 0) + dt;
+        if (this.quoteTimer >= 30000) {
+          this.quoteTimer = 0;
+          this.nextQuote = getRandomQuote('menu');
+          if (this.nextQuote !== this.bottomQuote) {
+            this.quoteTransitionState = 'fadeOut';
+          }
+        }
       }
     }
   }
@@ -266,6 +287,28 @@ export default class MenuScene {
     ctx.fillStyle = theme.color.bg;
     ctx.fillRect(0, 0, width, height);
 
+    // 拦截底部的语录绘制，实现透明度渐变
+    const originalFillText = ctx.fillText;
+    const self = this;
+    ctx.fillText = function(text, x, y, maxWidth) {
+      if (text === self.bottomQuote) {
+        const originalAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = originalAlpha * (self.quoteAlpha !== undefined ? self.quoteAlpha : 1);
+        if (maxWidth !== undefined) {
+          originalFillText.call(this, text, x, y, maxWidth);
+        } else {
+          originalFillText.call(this, text, x, y);
+        }
+        ctx.globalAlpha = originalAlpha;
+      } else {
+        if (maxWidth !== undefined) {
+          originalFillText.call(this, text, x, y, maxWidth);
+        } else {
+          originalFillText.call(this, text, x, y);
+        }
+      }
+    };
+
     ctx.save();
     ctx.globalAlpha = exitAlpha;
     ctx.translate(0, exitOffset);
@@ -326,6 +369,9 @@ export default class MenuScene {
     if (this.modal) {
       this.modal.render(ctx, theme);
     }
+
+    // 还原 fillText
+    ctx.fillText = originalFillText;
   }
 
   renderBackdrop(ctx) {
