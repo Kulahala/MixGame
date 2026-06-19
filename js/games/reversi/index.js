@@ -95,6 +95,7 @@ export default class ReversiScene extends BaseGameScene {
   }
 
   isAnimating() {
+    if (this.dropAnimation) return true;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         if (this.animations[r][c] && this.animations[r][c].animating) {
@@ -159,8 +160,10 @@ export default class ReversiScene extends BaseGameScene {
         this.state.saveResult();
 
         const won = gameResult.winner === 1;
+        const finalScore = won ? (gameResult.blackCount - gameResult.whiteCount) * 100 + gameResult.blackCount * 10 : gameResult.blackCount * 10;
 
         const stats = [
+          `得分：${finalScore} 分`,
           `结果：${won ? '胜利' : (gameResult.winner === 2 ? '失败' : '平局')}`,
           `黑棋 (玩家)：${gameResult.blackCount} 子`,
           `白棋 (电脑)：${gameResult.whiteCount} 子`,
