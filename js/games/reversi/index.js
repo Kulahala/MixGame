@@ -3,6 +3,8 @@ import { getHistory } from '../../core/storage.js';
 import { ReversiState } from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect, hitTestGrid } from '../../ui/canvas.js';
 import { getRandomQuote } from '../../ui/quotes.js';
+import { getScreenTier } from '../../core/layout.js';
+import { easeOutCubic, easeOutBack } from '../../ui/animation.js';
 
 export default class ReversiScene extends BaseGameScene {
   constructor(host, options = {}) {
@@ -22,7 +24,7 @@ export default class ReversiScene extends BaseGameScene {
       progress: 0,
       delay: 0,
       animTime: 0,
-      duration: 350,
+      duration: 200,
       scaleX: 1.0,
       oldColor: 0,
       targetColor: 0
@@ -33,24 +35,31 @@ export default class ReversiScene extends BaseGameScene {
 
   init() {
     const { width, height, safeTop } = this.host;
-    const isTablet = width >= 500 && height >= 600 && height >= width;
+    const tier = getScreenTier(width, height);
 
     let boardSize, boardY;
 
-    if (isTablet) {
+    if (tier === 'tablet') {
       boardSize = 400;
       boardY = Math.floor((height - boardSize) / 2) + 20;
-    } else if (height >= 700) {
+    } else if (tier === 'standard') {
       boardSize = Math.min(width - 32, 342);
       boardY = Math.floor((height - boardSize) / 2) + 30;
       if (boardY < safeTop + 140) {
         boardY = safeTop + 140;
       }
-    } else {
+    } else if (tier === 'compact') {
       boardSize = Math.min(width - 32, height - 250);
       boardY = Math.floor((height - boardSize) / 2) + 15;
       if (boardY < safeTop + 120) {
         boardY = safeTop + 120;
+      }
+    } else {
+      // tiny screen adaptive
+      boardSize = Math.min(width - 32, height - 210);
+      boardY = Math.floor((height - boardSize) / 2) + 10;
+      if (boardY < safeTop + 100) {
+        boardY = safeTop + 100;
       }
     }
 
@@ -80,7 +89,7 @@ export default class ReversiScene extends BaseGameScene {
       progress: 0,
       delay: 0,
       animTime: 0,
-      duration: 350,
+      duration: 200,
       scaleX: 1.0,
       oldColor: 0,
       targetColor: 0
@@ -123,7 +132,7 @@ export default class ReversiScene extends BaseGameScene {
       }
     }
 
-    let anyAnimating = false;
+    let anyAnimating = this.dropAnimation !== null;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
         const anim = this.animations[r][c];
@@ -199,13 +208,15 @@ export default class ReversiScene extends BaseGameScene {
                     progress: 0,
                     delay: delay,
                     animTime: 0,
-                    duration: 350,
+                    duration: 200,
                     scaleX: 1.0,
                     oldColor: 1,
                     targetColor: 2
                   };
                 });
               }
+
+              this.legalMoves = this.state.getLegalMoves(this.state.turn);
 
               if (this.state.passFlag) {
                 this.showToast('玩家无棋可走，跳过回合');
@@ -249,13 +260,15 @@ export default class ReversiScene extends BaseGameScene {
             progress: 0,
             delay: delay,
             animTime: 0,
-            duration: 350,
+            duration: 200,
             scaleX: 1.0,
             oldColor: 2,
             targetColor: 1
           };
         });
       }
+
+      this.legalMoves = this.state.getLegalMoves(this.state.turn);
 
       if (this.state.passFlag) {
         this.showToast('电脑无棋可下，跳过回合');
@@ -390,7 +403,8 @@ export default class ReversiScene extends BaseGameScene {
     });
 
     const isPlayerTurn = this.state.turn === 1;
-    const breatheSize = Math.sin(Date.now() / 200) * 1.5 + 5.5;
+    const breatheAngle = Date.now() / (isPlayerTurn ? 200 : 100);
+    const breatheSize = Math.sin(breatheAngle) * 1.5 + 5.5;
 
     ctx.save();
     if (isPlayerTurn) {
@@ -455,9 +469,23 @@ export default class ReversiScene extends BaseGameScene {
         const cy = boardY + r * cellSize + cellSize / 2;
 
         const anim = this.animations[r][c];
-        if (anim && anim.animating && anim.delay <= 0) {
-          const scaleX = anim.scaleX;
-          const color = anim.progress < 0.5 ? anim.oldColor : anim.targetColor;
+        if (anim && anim.animating) {
+          const inDelay = anim.delay > 0;
+          const progress = inDelay ? 0 : anim.progress;
+          const eased = easeOutCubic(progress);
+
+          let scaleX = 1.0;
+          let color = anim.oldColor;
+
+          if (!inDelay) {
+            if (eased < 0.5) {
+              scaleX = 1.0 - eased * 2;
+              color = anim.oldColor;
+            } else {
+              scaleX = (eased - 0.5) * 2;
+              color = anim.targetColor;
+            }
+          }
 
           ctx.save();
           ctx.translate(cx, cy);
@@ -467,7 +495,8 @@ export default class ReversiScene extends BaseGameScene {
           ctx.restore();
         } else if (val !== 0) {
           if (this.dropAnimation && this.dropAnimation.r === r && this.dropAnimation.c === c) {
-            const scale = 1.0 + Math.max(0, 0.25 * (1.0 - this.dropAnimation.progress));
+            const progress = this.dropAnimation.progress;
+            const scale = 1.3 - 0.3 * easeOutBack(progress);
             ctx.save();
             ctx.translate(cx, cy);
             ctx.scale(scale, scale);
@@ -477,20 +506,23 @@ export default class ReversiScene extends BaseGameScene {
           } else {
             this.drawPiece(ctx, cx, cy, val, cellSize * 0.38);
           }
-        } else {
-          if (this.state.turn === 1 && !this.completed) {
-            const isLegal = this.legalMoves.some(m => m.r === r && m.c === c);
-            if (isLegal) {
-              ctx.save();
-              const breatheAlpha = 0.18 + Math.sin(Date.now() / 250) * 0.06;
-              ctx.fillStyle = `rgba(0, 0, 0, ${breatheAlpha})`;
-              ctx.beginPath();
-              ctx.arc(cx, cy, 6, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.restore();
+          } else {
+            if (this.state.turn === 1 && !this.completed) {
+              const isLegal = this.legalMoves.some(m => m.r === r && m.c === c);
+              if (isLegal) {
+                ctx.save();
+                const breatheAngle = Date.now() / 250;
+                const hintRadius = 6.1 + 0.6 * Math.sin(breatheAngle);
+                const hintAlpha = 0.2 + Math.sin(breatheAngle) * 0.05;
+                ctx.globalAlpha = hintAlpha;
+                ctx.fillStyle = theme.color.ink;
+                ctx.beginPath();
+                ctx.arc(cx, cy, hintRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+              }
             }
           }
-        }
       }
     }
 

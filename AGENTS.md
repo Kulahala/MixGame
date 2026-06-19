@@ -97,7 +97,7 @@ If tests are added later, place them in a clearly named `test/` or `__tests__/` 
 
 提交信息应清晰、贴合当前仓库风格。
 
-- **无需每次改动都直接 commit，等改动效果经由用户判断确认后再提交。**
+- **无需每次改动都直接 commit，等改动效果经由用户判断确认后再 commit。**
 
 - 如果仓库已有明确提交格式，优先遵循仓库格式。
 - 如果仓库没有格式，默认使用中英双语标题：

@@ -349,7 +349,9 @@ function testMinimaxComplexity() {
 
   // Memory overhead measurement
   // We trigger GC first, measure heap, run minimax many times, trigger GC again, and measure heap.
-  global.gc();
+  if (global.gc) {
+    global.gc();
+  }
   const heapBefore = process.memoryUsage().heapUsed;
 
   const sampleState = new ReversiState('hard');
@@ -359,7 +361,9 @@ function testMinimaxComplexity() {
   }
 
   const heapDuring = process.memoryUsage().heapUsed;
-  global.gc();
+  if (global.gc) {
+    global.gc();
+  }
   const heapAfter = process.memoryUsage().heapUsed;
 
   const rawAllocatedBytes = heapDuring - heapBefore;
@@ -452,10 +456,10 @@ function testEdgeCases() {
     // Let's simulate a scenario where Player makes a move, which switches the turn, but the next player has no moves, so it passes back.
     // Let's construct a state where White (2) is active, plays a move, and Black (1) has no moves, so it passes back to White.
     const state2 = new ReversiState();
-    state2.board = Array.from({ length: 8 }, () => Array(8).fill(1)); // All Black (1)
+    state2.board = Array.from({ length: 8 }, () => Array(8).fill(2)); // All White (2)
     state2.board[0][7] = 0; // Empty
     state2.board[1][7] = 0; // Empty
-    state2.board[0][6] = 2; // White (2)
+    state2.board[0][6] = 1; // Black (1)
     state2.turn = 2; // White's turn
 
     // White makes a move at (0,7). This should flip (0,6) to White.

@@ -105,12 +105,39 @@ function simulateMove(board, r, c, player, flips) {
 function evaluateBoard(board, player) {
   const opponent = 3 - player;
   let score = 0;
+
+  // Four corners and their adjacent coordinates
+  const corners = [
+    { cr: 0, cc: 0, adj: [{ r: 0, c: 1 }, { r: 1, c: 0 }, { r: 1, c: 1 }] },
+    { cr: 0, cc: 7, adj: [{ r: 0, c: 6 }, { r: 1, c: 7 }, { r: 1, c: 6 }] },
+    { cr: 7, cc: 0, adj: [{ r: 6, c: 0 }, { r: 7, c: 1 }, { r: 6, c: 1 }] },
+    { cr: 7, cc: 7, adj: [{ r: 6, c: 7 }, { r: 7, c: 6 }, { r: 6, c: 6 }] }
+  ];
+
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
-      if (board[r][c] === player) {
-        score += WEIGHTS[r][c];
-      } else if (board[r][c] === opponent) {
-        score -= WEIGHTS[r][c];
+      if (board[r][c] === 0) continue;
+
+      const isPlayer = board[r][c] === player;
+      let weight = WEIGHTS[r][c];
+
+      // Dynamically adjust weights of adjacent cells if the corner is occupied
+      for (let i = 0; i < corners.length; i++) {
+        const corner = corners[i];
+        const isAdj = corner.adj.some(a => a.r === r && a.c === c);
+        if (isAdj) {
+          const cornerValue = board[corner.cr][corner.cc];
+          if (cornerValue !== 0) {
+            // Corner occupied, star positions are no longer risky. Restore to neutral/safe value (+10)
+            weight = 10;
+          }
+        }
+      }
+
+      if (isPlayer) {
+        score += weight;
+      } else {
+        score -= weight;
       }
     }
   }
@@ -139,7 +166,18 @@ function minimax(board, depth, alpha, beta, isMaximizing, player) {
   if (currentLegalMoves.length === 0) {
     const nextLegalMoves = getLegalMovesForBoard(board, isMaximizing ? opponent : player);
     if (nextLegalMoves.length === 0) {
-      return evaluateBoard(board, player);
+      // Both players have no legal moves -> Terminal game-over state
+      let pCount = 0;
+      let oCount = 0;
+      for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+          if (board[r][c] === player) pCount++;
+          else if (board[r][c] === opponent) oCount++;
+        }
+      }
+      if (pCount > oCount) return 10000 + pCount - oCount;
+      if (oCount > pCount) return -10000 - (oCount - pCount);
+      return 0;
     }
     // Pass: current player cannot move, turn passes to the other player
     return minimax(board, depth - 1, alpha, beta, !isMaximizing, player);
@@ -189,6 +227,7 @@ export class ReversiState {
     this.passFlag = false; // Set to true if next player's turn had to be passed
     this.startTime = Date.now();
     this.saved = false;
+    this.history = [];
 
     this.reset();
   }
@@ -209,6 +248,7 @@ export class ReversiState {
     this.passFlag = false;
     this.startTime = Date.now();
     this.saved = false;
+    this.history = [];
   }
 
   /**
@@ -232,6 +272,14 @@ export class ReversiState {
 
     if (!move) {
       return { success: false };
+    }
+
+    if (this.turn === 1) {
+      this.history.push({
+        board: this.board.map(row => [...row]),
+        turn: this.turn,
+        passFlag: this.passFlag
+      });
     }
 
     // Apply the move (place piece and flip outflanked opponent pieces)
@@ -266,6 +314,20 @@ export class ReversiState {
     }
 
     return { success: true, flips: move.flips };
+  }
+
+  /**
+   * Undoes the last player's move, restoring the state before the player placed their piece.
+   * @returns {boolean} True if successfully undone
+   */
+  undo() {
+    if (this.history.length === 0) return false;
+    const snap = this.history.pop();
+    this.board = snap.board;
+    this.turn = snap.turn;
+    this.passFlag = snap.passFlag;
+    this.saved = false;
+    return true;
   }
 
   /**
