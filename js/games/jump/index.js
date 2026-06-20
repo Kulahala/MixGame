@@ -1,5 +1,5 @@
 import BaseGameScene from '../../core/game-scene-base.js';
-import { getScores, getSession, saveSession, clearSession } from '../../core/storage.js';
+import { getScores, getSession, saveSession, clearSession, saveScore } from '../../core/storage.js';
 import { JumpState } from './state.js';
 import { drawText, fillRoundRect, strokeRoundRect } from '../../ui/canvas.js';
 import { getRandomQuote } from '../../ui/quotes.js';
@@ -152,8 +152,10 @@ class SessionModal {
 export default class JumpScene extends BaseGameScene {
   constructor(host, options = {}) {
     super(host, options);
+    this.options = options;
     this.gameId = 'jump';
     this.state = new JumpState();
+    this.state.mode = options.mode || 'classic';
     this.bottomQuote = getRandomQuote('jump') || '温暖的篝火旁，有新的开始。';
 
     // 镜头相机 Y
@@ -163,7 +165,7 @@ export default class JumpScene extends BaseGameScene {
     this.dragStart = null; // { x, y } (逻辑坐标)
     this.dragCurrent = null; // { x, y }
 
-    // 篝火火焰例子数组
+    // 篝火火焰粒子数组
     this.campfireParticles = [];
 
     // 存档引导 modal
@@ -209,40 +211,50 @@ export default class JumpScene extends BaseGameScene {
         this.showToast('已返回最近的篝火');
       }
     });
-    this.createTopButtons([this.respawnButton]);
+
+    if (this.state.mode === 'classic') {
+      this.createTopButtons([this.respawnButton]);
+    } else {
+      this.createTopButtons([]); // 无尽模式不创建返回篝火按钮
+    }
 
     // 篝火复位
     this.cameraY = 3200 - this.designH;
 
-    // 读取存档
-    const saved = getSession('jump');
-    if (saved) {
-      const modalW = 270;
-      const modalH = 190;
-      this.sessionModal = new SessionModal({
-        x: (width - modalW) / 2,
-        y: (height - modalH) / 2,
-        w: modalW,
-        h: modalH,
-        theme: this.theme,
-        onContinue: () => {
-          this.state.reset(saved);
-          this.cameraY = this.state.y - this.designH * 0.6;
-          this.input.remove(this.sessionModal);
-          this.sessionModal.destroy();
-          this.sessionModal = null;
-        },
-        onRestart: () => {
-          clearSession('jump');
-          this.state.reset();
-          this.cameraY = 3200 - this.designH;
-          this.input.remove(this.sessionModal);
-          this.sessionModal.destroy();
-          this.sessionModal = null;
-        }
-      });
-      this.input.add(this.sessionModal);
+    // 读取存档 (仅在经典模式下加载存档)
+    if (this.state.mode === 'classic') {
+      const saved = getSession('jump');
+      if (saved) {
+        const modalW = 270;
+        const modalH = 190;
+        this.sessionModal = new SessionModal({
+          x: (width - modalW) / 2,
+          y: (height - modalH) / 2,
+          w: modalW,
+          h: modalH,
+          theme: this.theme,
+          onContinue: () => {
+            this.state.reset(saved);
+            this.cameraY = this.state.y - this.designH * 0.6;
+            this.input.remove(this.sessionModal);
+            this.sessionModal.destroy();
+            this.sessionModal = null;
+          },
+          onRestart: () => {
+            clearSession('jump');
+            this.state.reset();
+            this.cameraY = 3200 - this.designH;
+            this.input.remove(this.sessionModal);
+            this.sessionModal.destroy();
+            this.sessionModal = null;
+          }
+        });
+        this.input.add(this.sessionModal);
+      } else {
+        this.state.reset();
+      }
     } else {
+      // 无尽模式
       this.state.reset();
     }
   }
@@ -255,11 +267,26 @@ export default class JumpScene extends BaseGameScene {
       this.sessionModal = null;
     }
 
-    const saved = getSession('jump');
-    this.state.reset(saved);
+    if (this.state.mode === 'classic') {
+      const saved = getSession('jump');
+      this.state.reset(saved);
+    } else {
+      this.state.reset();
+    }
     this.cameraY = this.state.y - this.designH * 0.6;
     this.bottomQuote = getRandomQuote('jump') || '每一堆燃起的篝火，都是攀登者的誓言。';
     this.lastVibrateStep = 0;
+  }
+
+  exit(callback) {
+    if (this.state.mode === 'endless' && this.state.peakAltitude > 0) {
+      saveScore('jump', {
+        score: this.state.peakAltitude,
+        difficulty: 'endless',
+        won: true
+      });
+    }
+    super.exit(callback);
   }
 
   update(dt = 16) {
@@ -294,21 +321,25 @@ export default class JumpScene extends BaseGameScene {
     // 平滑镜头追随 (60% 屏幕处)
     const targetCameraY = this.state.y - this.designH * 0.6;
     const maxCamY = 3200 - this.designH;
-    const limitCamY = Math.max(0, Math.min(maxCamY, targetCameraY));
+    const limitCamY = this.state.mode === 'endless'
+      ? Math.min(maxCamY, targetCameraY)
+      : Math.max(0, Math.min(maxCamY, targetCameraY));
     this.cameraY += (limitCamY - this.cameraY) * 0.08;
 
     // 篝火火焰粒子更新
     this.campfireParticles.forEach(p => p.update(dt));
     this.campfireParticles = this.campfireParticles.filter(p => p.alpha > 0);
 
-    // 周期性往点亮的篝火里扔火焰粒子
-    const activeCp = this.state.checkpoints[this.state.activeCheckpointIdx];
-    if (activeCp && Math.random() < 0.25) {
-      this.campfireParticles.push(new CampfireParticle(activeCp.x, activeCp.y));
+    // 经典模式下，周期性往点亮的篝火里扔火焰粒子
+    if (this.state.mode === 'classic') {
+      const activeCp = this.state.checkpoints[this.state.activeCheckpointIdx];
+      if (activeCp && Math.random() < 0.25) {
+        this.campfireParticles.push(new CampfireParticle(activeCp.x, activeCp.y));
+      }
     }
 
-    // 终局胜利检测
-    if (this.state.saved && !this.completed) {
+    // 终局胜利检测 (仅在经典模式下有 3200px 顶峰结算)
+    if (this.state.mode === 'classic' && this.state.saved && !this.completed) {
       this.completed = true;
       const stats = [
         `攀爬高度：100% (云巅峰顶)`,
@@ -449,18 +480,38 @@ export default class JumpScene extends BaseGameScene {
       sky:    { top: '#d1e6f5', bottom: '#ebe0ca' }
     };
 
-    if (this.cameraY >= ruinsY) {
-      // 宁静之森 ➔ 险峻遗迹 渐变
-      const range = forestY - ruinsY;
-      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - ruinsY) / range)) : 1.0;
-      colorTop = interpolateColor(colors.ruins.top, colors.forest.top, factor);
-      colorBottom = interpolateColor(colors.ruins.bottom, colors.forest.bottom, factor);
+    if (this.state.mode === 'endless') {
+      const baseY = 3200 - this.designH;
+      const distClimbed = baseY - this.cameraY;
+      const normY = ((distClimbed % 1500) + 1500) % 1500;
+
+      if (normY < 500) {
+        const factor = normY / 500;
+        colorTop = interpolateColor(colors.forest.top, colors.ruins.top, factor);
+        colorBottom = interpolateColor(colors.forest.bottom, colors.ruins.bottom, factor);
+      } else if (normY < 1000) {
+        const factor = (normY - 500) / 500;
+        colorTop = interpolateColor(colors.ruins.top, colors.sky.top, factor);
+        colorBottom = interpolateColor(colors.ruins.bottom, colors.sky.bottom, factor);
+      } else {
+        const factor = (normY - 1000) / 500;
+        colorTop = interpolateColor(colors.sky.top, colors.forest.top, factor);
+        colorBottom = interpolateColor(colors.sky.bottom, colors.forest.bottom, factor);
+      }
     } else {
-      // 险峻遗迹 ➔ 云霄之巅 渐变
-      const range = ruinsY - skyY;
-      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - skyY) / range)) : 0.0;
-      colorTop = interpolateColor(colors.sky.top, colors.ruins.top, factor);
-      colorBottom = interpolateColor(colors.sky.bottom, colors.ruins.bottom, factor);
+      if (this.cameraY >= ruinsY) {
+        // 宁静之森 ➔ 险峻遗迹 渐变
+        const range = forestY - ruinsY;
+        const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - ruinsY) / range)) : 1.0;
+        colorTop = interpolateColor(colors.ruins.top, colors.forest.top, factor);
+        colorBottom = interpolateColor(colors.ruins.bottom, colors.forest.bottom, factor);
+      } else {
+        // 险峻遗迹 ➔ 云霄之巅 渐变
+        const range = ruinsY - skyY;
+        const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - skyY) / range)) : 0.0;
+        colorTop = interpolateColor(colors.sky.top, colors.ruins.top, factor);
+        colorBottom = interpolateColor(colors.sky.bottom, colors.ruins.bottom, factor);
+      }
     }
 
     const grad = ctx.createLinearGradient(0, 0, 0, this.designH);
@@ -473,71 +524,128 @@ export default class JumpScene extends BaseGameScene {
     ctx.save();
     ctx.translate(0, -this.cameraY);
 
-    // 绘制篝火 (Checkpoint)
-    this.state.checkpoints.forEach(cp => {
-      const active = this.state.activeCheckpointIdx === cp.id;
-      ctx.save();
-      ctx.translate(cp.x, cp.y);
+    // 绘制篝火 (仅在经典模式下)
+    if (this.state.mode === 'classic') {
+      this.state.checkpoints.forEach(cp => {
+        const active = this.state.activeCheckpointIdx === cp.id;
+        ctx.save();
+        ctx.translate(cp.x, cp.y);
 
-      // 绘制石头堆
-      ctx.fillStyle = '#6e6e6e';
-      ctx.beginPath();
-      ctx.arc(-8, 3, 4, 0, Math.PI * 2);
-      ctx.arc(8, 3, 4, 0, Math.PI * 2);
-      ctx.arc(0, 4, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 绘制木柴
-      ctx.strokeStyle = '#5a3d28';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.moveTo(-6, 2);
-      ctx.lineTo(6, -4);
-      ctx.moveTo(6, 2);
-      ctx.lineTo(-6, -4);
-      ctx.stroke();
-
-      if (active) {
-        // 激活状态下点亮，绘制一个小闪烁核心
-        const flameSize = 6 + Math.sin(Date.now() / 80) * 1.5;
-        ctx.fillStyle = '#ff5100';
+        // 绘制石头堆
+        ctx.fillStyle = '#6e6e6e';
         ctx.beginPath();
-        ctx.arc(0, -5, flameSize, 0, Math.PI * 2);
+        ctx.arc(-8, 3, 4, 0, Math.PI * 2);
+        ctx.arc(8, 3, 4, 0, Math.PI * 2);
+        ctx.arc(0, 4, 5, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#ffbf00';
+        // 绘制木柴
+        ctx.strokeStyle = '#5a3d28';
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.arc(0, -4, flameSize * 0.65, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    });
+        ctx.moveTo(-6, 2);
+        ctx.lineTo(6, -4);
+        ctx.moveTo(6, 2);
+        ctx.lineTo(-6, -4);
+        ctx.stroke();
+
+        if (active) {
+          // 激活状态下点亮，绘制一个小闪烁核心
+          const flameSize = 6 + Math.sin(Date.now() / 80) * 1.5;
+          ctx.fillStyle = '#ff5100';
+          ctx.beginPath();
+          ctx.arc(0, -5, flameSize, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffbf00';
+          ctx.beginPath();
+          ctx.arc(0, -4, flameSize * 0.65, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+    }
 
     // 粒子渲染
     this.campfireParticles.forEach(p => p.render(ctx));
 
     // 绘制所有平台
     this.state.platforms.forEach(p => {
-      let platColor = '#6d8a76'; // 木质 (森)
-      let strokeColor = '#4f6957';
-      if (p.type === 'stone') {
-        platColor = '#a89e90'; // 石质 (遗迹)
-        strokeColor = '#80776b';
-      } else if (p.type === 'cloud') {
-        platColor = '#ffffff'; // 云朵 (顶)
-        strokeColor = '#ccdbe3';
-      }
+      if (p.type === 'slope') {
+        ctx.save();
+        ctx.fillStyle = '#5c7866'; // 默认木质绿斜面
+        ctx.strokeStyle = '#415749';
+        ctx.lineWidth = 1.5;
 
-      fillRoundRect(ctx, p.x, p.y, p.w, p.h, 3, platColor);
-      strokeRoundRect(ctx, p.x, p.y, p.w, p.h, 3, strokeColor, 1.5);
+        const isBoth = p.slopeDir === 'both';
+        const flatW = isBoth 
+          ? Math.floor(p.w * 0.55)
+          : Math.floor(p.w * 0.6);
+        const slopeW = isBoth ? Math.floor((p.w - flatW) / 2) : (p.w - flatW);
 
-      // 云顶轻柔修饰线
-      if (p.type === 'cloud') {
-        ctx.fillStyle = '#ebf3f7';
         ctx.beginPath();
-        ctx.arc(p.x + p.w * 0.25, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
-        ctx.arc(p.x + p.w * 0.75, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
+        if (isBoth) {
+          ctx.moveTo(p.x, p.y + p.h);
+          ctx.lineTo(p.x + slopeW, p.y);
+          ctx.lineTo(p.x + slopeW + flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y + p.h);
+        } else if (p.slopeDir === 'left-down') {
+          ctx.moveTo(p.x, p.y + p.h);
+          ctx.lineTo(p.x + p.w - flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y);
+          ctx.lineTo(p.x + p.w, p.y + p.h);
+        } else {
+          ctx.moveTo(p.x, p.y + p.h);
+          ctx.lineTo(p.x, p.y);
+          ctx.lineTo(p.x + flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y + p.h);
+        }
+        ctx.closePath();
         ctx.fill();
+        ctx.stroke();
+
+        // 绘制斜边与平顶的高光描线 (发光浮雕)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        if (isBoth) {
+          ctx.moveTo(p.x, p.y + p.h);
+          ctx.lineTo(p.x + slopeW, p.y);
+          ctx.lineTo(p.x + slopeW + flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y + p.h);
+        } else if (p.slopeDir === 'left-down') {
+          ctx.moveTo(p.x, p.y + p.h);
+          ctx.lineTo(p.x + p.w - flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y);
+        } else {
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + flatW, p.y);
+          ctx.lineTo(p.x + p.w, p.y + p.h);
+        }
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        let platColor = '#6d8a76'; // 木质 (森)
+        let strokeColor = '#4f6957';
+        if (p.type === 'stone') {
+          platColor = '#a89e90'; // 石质 (遗迹)
+          strokeColor = '#80776b';
+        } else if (p.type === 'cloud') {
+          platColor = '#ffffff'; // 云朵 (顶)
+          strokeColor = '#ccdbe3';
+        }
+
+        fillRoundRect(ctx, p.x, p.y, p.w, p.h, 3, platColor);
+        strokeRoundRect(ctx, p.x, p.y, p.w, p.h, 3, strokeColor, 1.5);
+
+        // 云顶轻柔修饰线
+        if (p.type === 'cloud') {
+          ctx.fillStyle = '#ebf3f7';
+          ctx.beginPath();
+          ctx.arc(p.x + p.w * 0.25, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
+          ctx.arc(p.x + p.w * 0.75, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     });
 
@@ -633,25 +741,45 @@ export default class JumpScene extends BaseGameScene {
     strokeRoundRect(ctx, paddingX, topBarY, barW, barH, theme.radius.md, 'rgba(255, 255, 255, 0.6)', 1.5);
 
     const textCenterY = topBarY + barH / 2;
-    // 左右留白
-    drawText(ctx, `高度进度：${this.state.score}%`, paddingX + 16, textCenterY, {
-      size: 14,
-      color: theme.color.ink,
-      font: theme.font.body,
-      weight: 'bold',
-      align: 'left',
-      baseline: 'middle'
-    });
-
-    const activeCpName = this.state.checkpoints[this.state.activeCheckpointIdx].name;
-    drawText(ctx, activeCpName, paddingX + barW - 16, textCenterY, {
-      size: 13,
-      color: theme.color.sage,
-      font: theme.font.body,
-      weight: 'bold',
-      align: 'right',
-      baseline: 'middle'
-    });
+    if (this.state.mode === 'endless') {
+      const scores = getScores()['jump'] || {};
+      const bestH = scores.bestEndlessHeight || 0;
+      drawText(ctx, `无尽攀爬：${this.state.score} px`, paddingX + 16, textCenterY, {
+        size: 14,
+        color: theme.color.ink,
+        font: theme.font.body,
+        weight: 'bold',
+        align: 'left',
+        baseline: 'middle'
+      });
+      drawText(ctx, `最佳记录：${bestH} px`, paddingX + barW - 16, textCenterY, {
+        size: 13,
+        color: theme.color.sage,
+        font: theme.font.body,
+        weight: 'bold',
+        align: 'right',
+        baseline: 'middle'
+      });
+    } else {
+      drawText(ctx, `高度进度：${this.state.score}%`, paddingX + 16, textCenterY, {
+        size: 14,
+        color: theme.color.ink,
+        font: theme.font.body,
+        weight: 'bold',
+        align: 'left',
+        baseline: 'middle'
+      });
+      const activeCp = this.state.checkpoints[this.state.activeCheckpointIdx];
+      const activeCpName = activeCp ? activeCp.name : '初始地面';
+      drawText(ctx, activeCpName, paddingX + barW - 16, textCenterY, {
+        size: 13,
+        color: theme.color.sage,
+        font: theme.font.body,
+        weight: 'bold',
+        align: 'right',
+        baseline: 'middle'
+      });
+    }
 
     // 3. 在最边缘绘制 Letterbox 的黑色背景（如果屏幕特别宽，左右黑边进行物理遮罩，确保不透光）
     if (this.offsetX > 0) {

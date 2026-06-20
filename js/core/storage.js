@@ -60,6 +60,7 @@ const DEFAULT_SCORES = {
   jump: {
     bestScore: 0,
     bestTime: Infinity,
+    bestEndlessHeight: 0,
     bestSteps: 0,
     plays: 0,
     history: [],
@@ -96,11 +97,18 @@ export function saveScore(gameId, result) {
   if (gameId === 'woodkingdom') {
     isBest = !current.bestTime || (result.time && result.time < current.bestTime);
   } else if (gameId === 'jump') {
-    // 双模最好成绩判定
-    if (result.score === 100) {
-      isBest = !current.bestTime || current.bestTime === Infinity || (result.time && result.time < current.bestTime) || (current.bestScore < 100);
+    if (result.difficulty === 'endless') {
+      const currentHeight = current.bestEndlessHeight || 0;
+      isBest = result.score > currentHeight;
+      if (isBest) {
+        next.bestEndlessHeight = result.score;
+      }
     } else {
-      isBest = (current.bestScore < 100) && (result.score > (current.bestScore || 0));
+      if (result.score === 100) {
+        isBest = !current.bestTime || current.bestTime === Infinity || (result.time && result.time < current.bestTime) || (current.bestScore < 100);
+      } else {
+        isBest = (current.bestScore < 100) && (result.score > (current.bestScore || 0));
+      }
     }
   } else {
     isBest = !current.bestScore || result.score > current.bestScore;
@@ -135,7 +143,11 @@ export function saveScore(gameId, result) {
     const nextHistory = [];
     for (const diff in groups) {
       if (gameId === 'woodkingdom' || gameId === 'jump') {
-        groups[diff].sort((a, b) => (a.time || 0) - (b.time || 0));
+        if (gameId === 'jump' && diff === 'endless') {
+          groups[diff].sort((a, b) => (b.score || 0) - (a.score || 0));
+        } else {
+          groups[diff].sort((a, b) => (a.time || 0) - (b.time || 0));
+        }
       } else {
         groups[diff].sort((a, b) => (b.score || 0) - (a.score || 0));
       }

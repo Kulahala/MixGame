@@ -117,4 +117,150 @@ if (diffX < 0.05 && diffY < 0.05) {
   process.exit(1);
 }
 
+// 6. 验证斜坡滑动与物理状态
+console.log('\n[Test 6] Verifying Slope Sliding & Friction...');
+state.mode = 'classic';
+state.reset();
+// 手动塞入一个确定的斜坡平台进行测试，避免随机性影响
+state.platforms = [
+  { x: 100, y: 2980, w: 200, h: 50, type: 'slope', slopeDir: 'left-down' }
+];
+state.updateActiveColliders();
+
+// 斜坡左下是 (100, 3030)，右上是 (300, 2980)
+// 我们在 x = 140，y = 2950 垂直往下落
+state.x = 140;
+state.y = 2950;
+state.vx = 0;
+state.vy = 0.2;
+state.state = 'falling';
+
+// 更新几帧，让它撞在斜坡上并开始滑落
+for (let i = 0; i < 20; i++) {
+  state.update(16);
+}
+
+// 检查是否进入了 sliding 状态
+if (state.state === 'sliding') {
+  console.log(`✔ Slope sliding state verified. Speed vx: ${state.vx.toFixed(4)}, vy: ${state.vy.toFixed(4)}`);
+} else {
+  console.error('❌ Failed sliding state verification. State:', state.state);
+  process.exit(1);
+}
+
+// 7. 验证斜面顶点圆角碰撞
+console.log('\n[Test 7] Verifying Rounded Slope Vertex Collision...');
+state.mode = 'classic';
+state.reset();
+state.platforms = [
+  { x: 100, y: 2980, w: 200, h: 50, type: 'slope', slopeDir: 'left-down' }
+];
+state.updateActiveColliders();
+// 将圆心放置在极其接近顶点 (300, 2980) 的地方（稍微偏右偏上，如 (305, 2975)），向顶点方向高速运动
+state.x = 305;
+state.y = 2975;
+state.vx = -1.0;
+state.vy = 1.0;
+state.state = 'falling';
+
+state.update(4); // 运行一小步物理
+
+// 应该能被圆角弹开，不会直接穿透卡在斜坡里面
+if (state.x > 300 && state.y < 2980) {
+  console.log(`✔ Vertex collision verified. Position: (${state.x.toFixed(2)}, ${state.y.toFixed(2)})`);
+} else {
+  console.error('❌ Vertex collision failed or penetrated. Position:', state.x, state.y);
+  process.exit(1);
+}
+
+// 8. 验证无尽模式 Chunk 加载与 GC-free 缓存
+console.log('\n[Test 8] Verifying Endless Chunk Loading & Cache Hit...');
+state.mode = 'endless';
+state.reset(); // 初始化生成器和无尽数据
+
+// 先在初始底部位置更新一次，加载并缓存最底部的 chunks
+state.update(16);
+const cacheSizeBefore = state.generator.chunkCache.size;
+
+// 向上爬升 1200px (即 Y 变小)
+state.y -= 1200;
+state.update(16); // 触发更高平台的生成与缓存
+
+const cacheSizeAfter = state.generator.chunkCache.size;
+if (cacheSizeAfter > cacheSizeBefore) {
+  console.log(`✔ GC-free Chunk loaded. Cached count: ${cacheSizeAfter}`);
+} else {
+  console.error('❌ Chunk loading failed to populate cache.');
+  process.exit(1);
+}
+
+// 再次坠落到底部 (折返)
+state.y = 3100;
+state.update(16);
+const cacheSizeFinal = state.generator.chunkCache.size;
+
+// 此时因为底部 chunk 已经缓存在 Map 中，缓存大小不应该增加
+if (cacheSizeFinal === cacheSizeAfter) {
+  console.log('✔ Cache hit verified (GC-free cache working).');
+} else {
+  console.error('❌ Cache size changed, indicating chunk was re-instantiated. Final:', cacheSizeFinal, 'After:', cacheSizeAfter);
+  process.exit(1);
+}
+
+// 9. 验证斜坡底部和垂直侧边撞击阻断 (防穿透)
+console.log('\n[Test 9] Verifying Slope Bottom & Wall Collision Blockers (Anti-Penetration)...');
+state.mode = 'classic';
+state.reset();
+state.platforms = [
+  { x: 100, y: 2980, w: 200, h: 50, type: 'slope', slopeDir: 'left-down' }
+];
+state.updateActiveColliders();
+
+// 9a. 测试从下方垂直撞击底面 Y=3030
+state.x = 200;
+state.y = 3050;
+state.vx = 0;
+state.vy = -0.5; // 向上高速运动
+state.state = 'jumping';
+
+// 运行 3 帧以确保有足够的时间发生接触碰撞，中途截获事件
+let hitCeiling = false;
+for (let i = 0; i < 3; i++) {
+  state.update(16);
+  if (state.justBouncedCeiling) {
+    hitCeiling = true;
+  }
+}
+
+// 应该被底边阻挡并向下弹回，y 应该在 3030 + radius = 3038 或下方，vy 应该变成正数 (向下)
+if (state.y >= 3038 && state.vy > 0 && hitCeiling) {
+  console.log(`✔ Slope bottom blocker verified. Position Y: ${state.y.toFixed(2)}, Velocity Y: ${state.vy.toFixed(4)}`);
+} else {
+  console.error('❌ Slope bottom blocker failed! Character penetrated. Y:', state.y, 'vy:', state.vy, 'hitCeiling:', hitCeiling);
+  process.exit(1);
+}
+
+// 9b. 测试撞击垂直墙面 (left-down 垂直墙在右侧 x=300)
+state.x = 315;
+state.y = 3000;
+state.vx = -1.0;
+state.vy = 0;
+state.state = 'jumping';
+
+let hitWall = false;
+for (let i = 0; i < 3; i++) {
+  state.update(16);
+  if (state.justBouncedWall) {
+    hitWall = true;
+  }
+}
+
+// 应该被右侧垂直墙阻挡并向右反弹，x 应该在 300 + radius = 308 或右侧，vx 应该变成正数 (向右)
+if (state.x >= 308 && state.vx > 0 && hitWall) {
+  console.log(`✔ Slope vertical wall blocker verified. Position X: ${state.x.toFixed(2)}, Velocity X: ${state.vx.toFixed(4)}`);
+} else {
+  console.error('❌ Slope vertical wall blocker failed! Character penetrated. X:', state.x, 'vx:', state.vx);
+  process.exit(1);
+}
+
 console.log('\n✔ ALL STATE & PHYSICS ENGINE UNIT TESTS PASSED!');
