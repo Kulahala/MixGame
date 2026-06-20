@@ -37,6 +37,10 @@ export default class BaseGameScene {
     this.quoteAlpha = 1.0;
     this.quoteTransitionState = null; // null | 'fadeOut' | 'fadeIn'
     this.nextQuote = '';
+
+    // Toast 提示状态
+    this.toastText = '';
+    this.toastTimer = 0;
   }
 
   // ── 退场动画 ────────────────────────────────────
@@ -127,6 +131,15 @@ export default class BaseGameScene {
     }
   }
 
+  /**
+   * 显示 Toast 气泡提示
+   * @param {string} text
+   */
+  showToast(text) {
+    this.toastText = text;
+    this.toastTimer = 1600;
+  }
+
   // ── 更新循环 ────────────────────────────────────
 
   /**
@@ -169,6 +182,13 @@ export default class BaseGameScene {
             this.quoteTransitionState = 'fadeOut';
           }
         }
+      }
+    }
+
+    if (this.toastTimer > 0) {
+      this.toastTimer -= dt;
+      if (this.toastTimer <= 0) {
+        this.toastText = '';
       }
     }
 

@@ -57,6 +57,14 @@ const DEFAULT_SCORES = {
     plays: 0,
     history: [],
   },
+  jump: {
+    bestScore: 0,
+    bestTime: Infinity,
+    bestSteps: 0,
+    plays: 0,
+    history: [],
+    currentSession: null,
+  },
 };
 
 function cloneDefaultScores() {
@@ -84,13 +92,23 @@ export function saveScore(gameId, result) {
     lastLevelId: result.levelId || current.lastLevelId || '',
   });
 
-  const isBest = gameId === 'woodkingdom'
-    ? (!current.bestTime || (result.time && result.time < current.bestTime))
-    : (!current.bestScore || result.score > current.bestScore);
+  let isBest = false;
+  if (gameId === 'woodkingdom') {
+    isBest = !current.bestTime || (result.time && result.time < current.bestTime);
+  } else if (gameId === 'jump') {
+    // 双模最好成绩判定
+    if (result.score === 100) {
+      isBest = !current.bestTime || current.bestTime === Infinity || (result.time && result.time < current.bestTime) || (current.bestScore < 100);
+    } else {
+      isBest = (current.bestScore < 100) && (result.score > (current.bestScore || 0));
+    }
+  } else {
+    isBest = !current.bestScore || result.score > current.bestScore;
+  }
 
   if (isBest) {
     next.bestScore = result.score;
-    next.bestTime = result.time || 0;
+    next.bestTime = result.time || (result.score === 100 ? 0 : Infinity);
     next.bestSteps = result.steps || 0;
     next.bestMistakes = result.mistakes || 0;
     next.bestDifficulty = result.difficulty || 'easy';
@@ -116,7 +134,7 @@ export function saveScore(gameId, result) {
 
     const nextHistory = [];
     for (const diff in groups) {
-      if (gameId === 'woodkingdom') {
+      if (gameId === 'woodkingdom' || gameId === 'jump') {
         groups[diff].sort((a, b) => (a.time || 0) - (b.time || 0));
       } else {
         groups[diff].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -147,10 +165,35 @@ export function getHistory(gameId, difficulty) {
   if (difficulty) {
     list = list.filter(h => h.difficulty === difficulty);
   }
-  if (gameId === 'woodkingdom') {
+  if (gameId === 'woodkingdom' || gameId === 'jump') {
     list.sort((a, b) => (a.time || 0) - (b.time || 0));
   } else {
     list.sort((a, b) => (b.score || 0) - (a.score || 0));
   }
   return list.slice(0, 3);
+}
+
+export function saveSession(gameId, sessionData) {
+  const scores = getScores();
+  if (scores[gameId]) {
+    scores[gameId].currentSession = sessionData;
+    try {
+      wx.setStorageSync(STORAGE_KEY, scores);
+    } catch (error) {}
+  }
+}
+
+export function getSession(gameId) {
+  const scores = getScores();
+  return scores[gameId] ? scores[gameId].currentSession : null;
+}
+
+export function clearSession(gameId) {
+  const scores = getScores();
+  if (scores[gameId]) {
+    scores[gameId].currentSession = null;
+    try {
+      wx.setStorageSync(STORAGE_KEY, scores);
+    } catch (error) {}
+  }
 }

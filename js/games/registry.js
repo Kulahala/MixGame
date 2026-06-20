@@ -7,6 +7,7 @@ import SlitherlinkScene from './slitherlink/index.js';
 import WoodKingdomScene from './woodkingdom/index.js';
 import OneStrokeScene from './onestroke/index.js';
 import ReversiScene from './reversi/index.js';
+import JumpScene from './jump/index.js';
 
 
 export const GAMES = [
@@ -168,6 +169,26 @@ export const GAMES = [
     ],
     themeColor: '#567d65',
     iconText: '棋'
+  },
+  {
+    id: 'jump',
+    name: '跃上云巅',
+    sceneClass: JumpScene,
+    description: '单手弹跳攀爬 · 温馨篝火旅途',
+    rules: '【跃上云巅规则说明】\n1. 在屏幕任意位置向反方向拖拽并松手，可将粘性 Slime 饭团发射出去。\n2. 撞击平台侧壁或下方会发生弹性物理反弹，踩中平台顶部可平稳站立。\n3. 每个区域的起点入口均有一堆安全篝火，踩中即可点亮。如果不慎跌落可随时返回最后篝火起跳。\n4. 冲过重重险阻与物理反弹，登上 3200 米的云巅即可通关！',
+    formatScore: (scoreObj) => {
+      if (!scoreObj) return null;
+      if (scoreObj.bestTime && scoreObj.bestTime !== Infinity) {
+        return `最佳速通 ${scoreObj.bestTime}s`;
+      }
+      return scoreObj.bestScore ? `最佳攀爬 ${scoreObj.bestScore}%` : null;
+    },
+    configTitle: '跃上云巅 旅程模式',
+    configOptions: [
+      { label: '点亮篝火，开启攀登', value: {} }
+    ],
+    themeColor: '#8f9f91',
+    iconText: '跃'
   }
 ];
 

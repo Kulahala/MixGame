@@ -13,10 +13,6 @@ export default class ReversiScene extends BaseGameScene {
     this.state = new ReversiState(difficulty);
     this.bottomQuote = getRandomQuote('reversi');
     this.completed = false;
-
-    this.toastText = '';
-    this.toastTimer = 0;
-
     this.aiThinkingTimer = 700;
     this.dropAnimation = null;
     this.animations = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => ({
@@ -81,8 +77,6 @@ export default class ReversiScene extends BaseGameScene {
     this.bottomQuote = getRandomQuote('reversi');
     this.completed = false;
     this.aiThinkingTimer = 700;
-    this.toastText = '';
-    this.toastTimer = 0;
     this.dropAnimation = null;
     this.animations = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => ({
       animating: false,
@@ -98,10 +92,7 @@ export default class ReversiScene extends BaseGameScene {
     this.legalMoves = this.state.getLegalMoves(this.state.turn);
   }
 
-  showToast(text) {
-    this.toastText = text;
-    this.toastTimer = 1600;
-  }
+
 
   isAnimating() {
     if (this.dropAnimation) return true;
@@ -117,13 +108,6 @@ export default class ReversiScene extends BaseGameScene {
 
   update(dt = 16) {
     if (super.update(dt)) return;
-
-    if (this.toastTimer > 0) {
-      this.toastTimer -= dt;
-      if (this.toastTimer <= 0) {
-        this.toastText = '';
-      }
-    }
 
     if (this.dropAnimation) {
       this.dropAnimation.progress += dt / this.dropAnimation.duration;
