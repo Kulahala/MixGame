@@ -35,6 +35,38 @@ function interpolateRgba(c1, c2, factor) {
   return `rgba(${r}, ${g}, ${b}, ${a})`;
 }
 
+// 天空昼夜循环的基准静态常量配置，防止高频每帧分配内存产生 GC 抖动
+const SKY_TIME_STATES = [
+  { // 0: Noon (中午)
+    skyTop: '#7bbfea', skyBottom: '#e8f5fd',
+    plat: '#fffdf2', stroke: '#ffd54f',
+    bubble: '#fffbf2', slideBg: '#fff7d6',
+    stripe: { r: 255, g: 213, b: 79, a: 0.5 },
+    farCloud: { r: 255, g: 255, b: 255, a: 0.28 }
+  },
+  { // 1: Dusk (傍晚)
+    skyTop: '#e67e80', skyBottom: '#4a374a',
+    plat: '#ffe6e6', stroke: '#f06292',
+    bubble: '#fff0f0', slideBg: '#fce4ec',
+    stripe: { r: 240, g: 98, b: 146, a: 0.5 },
+    farCloud: { r: 240, g: 200, b: 210, a: 0.24 }
+  },
+  { // 2: Night (深夜)
+    skyTop: '#0b0f19', skyBottom: '#1a233a',
+    plat: '#a9c0d0', stroke: '#29b6f6',
+    bubble: '#b8cddc', slideBg: '#455a64',
+    stripe: { r: 41, g: 182, b: 246, a: 0.5 },
+    farCloud: { r: 150, g: 180, b: 210, a: 0.15 }
+  },
+  { // 3: Dawn (清晨)
+    skyTop: '#ccd9e8', skyBottom: '#fdf6e2',
+    plat: '#f5f8fa', stroke: '#b0bec5',
+    bubble: '#edf1f5', slideBg: '#eceff1',
+    stripe: { r: 176, g: 190, b: 197, a: 0.5 },
+    farCloud: { r: 240, g: 245, b: 250, a: 0.26 }
+  }
+];
+
 // 篝火小粒子效果
 class CampfireParticle {
   constructor(x, y) {
@@ -229,6 +261,18 @@ export default class JumpScene extends BaseGameScene {
 
     // 拖拽蓄力轻微触觉震动段落档位
     this.lastVibrateStep = 0;
+
+    // 预分配的天空层昼夜插值色缓存对象，达成绝对零 GC (GC-free)
+    this.timeColors = {
+      skyTop: '',
+      skyBottom: '',
+      plat: '',
+      stroke: '',
+      bubble: '',
+      slideBg: '',
+      stripe: '',
+      farCloud: ''
+    };
   }
 
   init() {
@@ -732,37 +776,7 @@ export default class JumpScene extends BaseGameScene {
 
   // 计算天空层昼夜循环的颜色配置 (中午->傍晚->深夜->清晨)
   getSkyTimeColors(p) {
-    const states = [
-      { // 0: Noon (中午)
-        skyTop: '#7bbfea', skyBottom: '#e8f5fd',
-        plat: '#fffdf2', stroke: '#ffd54f',
-        bubble: '#fffbf2', slideBg: '#fff7d6',
-        stripe: { r: 255, g: 213, b: 79, a: 0.5 },
-        farCloud: { r: 255, g: 255, b: 255, a: 0.28 }
-      },
-      { // 1: Dusk (傍晚)
-        skyTop: '#e67e80', skyBottom: '#4a374a',
-        plat: '#ffe6e6', stroke: '#f06292',
-        bubble: '#fff0f0', slideBg: '#fce4ec',
-        stripe: { r: 240, g: 98, b: 146, a: 0.5 },
-        farCloud: { r: 240, g: 200, b: 210, a: 0.24 }
-      },
-      { // 2: Night (深夜)
-        skyTop: '#0b0f19', skyBottom: '#1a233a',
-        plat: '#a9c0d0', stroke: '#29b6f6',
-        bubble: '#b8cddc', slideBg: '#455a64',
-        stripe: { r: 41, g: 182, b: 246, a: 0.5 },
-        farCloud: { r: 150, g: 180, b: 210, a: 0.15 }
-      },
-      { // 3: Dawn (清晨)
-        skyTop: '#ccd9e8', skyBottom: '#fdf6e2',
-        plat: '#f5f8fa', stroke: '#b0bec5',
-        bubble: '#edf1f5', slideBg: '#eceff1',
-        stripe: { r: 176, g: 190, b: 197, a: 0.5 },
-        farCloud: { r: 240, g: 245, b: 250, a: 0.26 }
-      }
-    ];
-
+    const states = SKY_TIME_STATES;
     const stateCount = states.length;
     const scaled = p * stateCount;
     const index1 = Math.floor(scaled) % stateCount;
@@ -772,16 +786,17 @@ export default class JumpScene extends BaseGameScene {
     const s1 = states[index1];
     const s2 = states[index2];
 
-    return {
-      skyTop: interpolateColor(s1.skyTop, s2.skyTop, t),
-      skyBottom: interpolateColor(s1.skyBottom, s2.skyBottom, t),
-      plat: interpolateColor(s1.plat, s2.plat, t),
-      stroke: interpolateColor(s1.stroke, s2.stroke, t),
-      bubble: interpolateColor(s1.bubble, s2.bubble, t),
-      slideBg: interpolateColor(s1.slideBg, s2.slideBg, t),
-      stripe: interpolateRgba(s1.stripe, s2.stripe, t),
-      farCloud: interpolateRgba(s1.farCloud, s2.farCloud, t)
-    };
+    const target = this.timeColors;
+    target.skyTop = interpolateColor(s1.skyTop, s2.skyTop, t);
+    target.skyBottom = interpolateColor(s1.skyBottom, s2.skyBottom, t);
+    target.plat = interpolateColor(s1.plat, s2.plat, t);
+    target.stroke = interpolateColor(s1.stroke, s2.stroke, t);
+    target.bubble = interpolateColor(s1.bubble, s2.bubble, t);
+    target.slideBg = interpolateColor(s1.slideBg, s2.slideBg, t);
+    target.stripe = interpolateRgba(s1.stripe, s2.stripe, t);
+    target.farCloud = interpolateRgba(s1.farCloud, s2.farCloud, t);
+
+    return target;
   }
 
   // 天空阶段星宿恒星视差绘制
