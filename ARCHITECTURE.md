@@ -86,10 +86,12 @@ Canvas UI should use shared helpers from `js/ui/canvas.js` (draw, `scaleAround`,
 
 Game-specific animations live in the scene layer (`index.js`), consuming state change metadata and interpolating visuals per frame. Current animation patterns: 2048 tile slide/spawn (two-phase: slide 160ms + spawn 200ms with input locking), minesweeper cell reveal (synchronous fade/scale 150ms), memory card flip (3D scaleX interpolation 200ms), reversi cell flip (3D scaleX interpolation with cascading delay based on distance to move), and jump slime squash-and-stretch harmonic scaling. All use easing functions from `js/ui/animation.js`.
 
-Jump game also includes:
-- Parallax scrolling background with three-stage height segments (Forest: 0~2000px, Ruins: 2000~4000px, Sky: 4000px+). In the Sky segment, Y coordinates for stars and floating clouds wrap infinitely (`y = (cameraY * parallaxSpeed) % designHeight`) to avoid empty space during endless climbs.
+- Parallax scrolling background with three-stage height segments. Altitude thresholds adapt dynamically based on mode: in Classic Mode (Forest: Y >= 2150px, Ruins: 1100 <= Y < 2150px, Sky: Y < 1100px), and in Endless Mode (Forest: Y >= 1150px, Ruins: -850 <= Y < 1150px, Sky: Y < -850px). In the Sky segment, Y coordinates for stars and floating clouds wrap infinitely to avoid empty space during endless climbs.
+- Themed boundary walls replacing invisible air walls: climbing vines (Forest), ruins stone columns (Ruins), and bubble clouds (Sky) scroll and fade dynamically based on altitude.
+- Low-saturation Japanese elegant platforms and slopes: textured wood with dark grain lines, cracked stone with highlights, and cloud platforms with inner bubble rings. Slopes feature low-saturation, fine anti-slip groove patterns (Forest: sage green stripes; Ruins: warm grey-beige stripes; Sky: semi-transparent white stripes) instead of industrial warning stripes.
+- Slime contrast outline and state-aware eyes: a `#25221d` outer outline is stroked around the body to prevent blending into dark backgrounds, and eyes animate dynamically (charging眯眯眼, jumping round-eyed, falling ∩ ∩, sliding ~ ~, and dizzy X X).
+- Interactive particles: launch dust, landing impact dust ring, speed trails, and material-specific collision debris (wood splinters, stone chips, light sparks).
 - Adaptive rendering centers: Slime eyes are dynamically transformed and aligned inside the `scale(scaleX, scaleY)` matrix coordinate system to prevent drifting during charge and squashing phases.
-- Ambient particles: Meteor trails, stamp landing particles, and speed lines.
 
 Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`. `quotes.js` acts as a static collection of zen-styled quotes and game-specific tips, rendered randomly at the bottom of the menu and game scenes.
 
