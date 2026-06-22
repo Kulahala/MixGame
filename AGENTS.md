@@ -7,7 +7,7 @@ This is a WeChat Mini Game project. The runtime entry is `game.js`, which import
 - `js/main.js`: creates the canvas context and starts the collection host.
 - `js/core/`: scene switching, input dispatch, and local score storage.
 - `js/scenes/`: top-level scenes such as the game selection menu.
-- `js/games/`: standalone games; current modules are `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, and `onestroke/`.
+- `js/games/`: standalone games; current modules are `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, `onestroke/`, `reversi/`, and `jump/`.
 - `js/themes/` and `js/ui/`: visual tokens and reusable canvas UI helpers.
 - `js/libs/`: third-party or vendored utilities (currently empty; previously held `tinyemitter.js` which was removed).
 - `dev/`: browser-only debug shell and wx/canvas adapter.

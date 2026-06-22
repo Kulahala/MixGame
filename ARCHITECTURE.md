@@ -14,7 +14,7 @@ All game scenes extend `BaseGameScene`, which provides standard enter/exit anima
 
 - `js/core/`: framework-level services. `game-host.js` controls scene lifecycle, `game-scene-base.js` provides shared scene behavior (animations, buttons, modals), `input-dispatcher.js` routes touches to interactive objects, `storage.js` persists local scores, and `layout.js` provides responsive screen tier detection (`tablet`/`standard`/`compact`/`tiny`).
 - `js/scenes/`: app-level screens. `menu-scene.js` renders the game selection menu and opens configuration modals.
-- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, `onestroke/`.
+- `js/games/`: game modules. Each game keeps rule/state logic in `state.js` and scene/render/input glue in `index.js`. Current games: `sudoku/`, `huarongdao/`, `minesweeper/`, `game2048/`, `memory/`, `woodkingdom/`, `slitherlink/`, `onestroke/`, `reversi/`, and `jump/`.
 - `js/ui/`: reusable Canvas UI primitives and overlays. `canvas.js` provides low-level helpers (text, scaling, hit-testing), `animation.js` provides shared easing functions (easeOutQuart, easeOutCubic, easeOutBack, smoothLerp) consumed by scenes and modals.
 - `js/themes/`: shared visual tokens. Current UI uses `elegant.js`.
 - `dev/`: browser-only debug adapter. It should not become a second runtime architecture.
@@ -66,6 +66,10 @@ State classes own gameplay rules, scoring inputs, completion checks, timers, and
 
 `WoodKingdomState` owns the battlefield grids (opponent queue, opponent frontline, and player frontline), card configurations, double resources (dewdrop and leaf), release and leave rewards, scale tilt value, level progression, AI actions, turn resolution sequence, and local save.
 
+`ReversiState` owns the 8x8 board grid, flip validation, turn mechanics, and game over triggers. It encapsulates three AI engines: Random/Greedy (easy), Static Weighting Evaluation (medium), and 3-level Minimax with Alpha-Beta pruning (hard).
+
+`JumpState` owns physics state (X/Y coordinates, velocities, charge ratios), platform array management, and game over logic. The platform generator (`generator.js`) uses a physics-based reachability validation algorithm: calculating max horizontal reach dynamically via parabolic formulas for arbitrary height differences, enforcing head-room clearance, and shifting overlapping platform X coordinates to guarantee 100% jumpable configurations.
+
 Scenes should not duplicate core game rules. They should translate screen input into state method calls and render state.
 
 ## Scoring And Storage
@@ -80,7 +84,12 @@ Result screens may display intuitive per-game metrics such as time, steps, mista
 
 Canvas UI should use shared helpers from `js/ui/canvas.js` (draw, `scaleAround`, `clamp`, `hitTestGrid`), shared easing from `js/ui/animation.js`, and shared theme values from `js/themes/elegant.js`. Game scenes should extend `BaseGameScene` and implement `reset()` and `renderGame(ctx)` rather than duplicating animation, button, and modal logic.
 
-Game-specific animations live in the scene layer (`index.js`), consuming state change metadata and interpolating visuals per frame. Current animation patterns: 2048 tile slide/spawn (two-phase: slide 160ms + spawn 200ms with input locking), minesweeper cell reveal (synchronous fade/scale 150ms), memory card flip (3D scaleX interpolation 200ms). All use easing functions from `js/ui/animation.js`.
+Game-specific animations live in the scene layer (`index.js`), consuming state change metadata and interpolating visuals per frame. Current animation patterns: 2048 tile slide/spawn (two-phase: slide 160ms + spawn 200ms with input locking), minesweeper cell reveal (synchronous fade/scale 150ms), memory card flip (3D scaleX interpolation 200ms), reversi cell flip (3D scaleX interpolation with cascading delay based on distance to move), and jump slime squash-and-stretch harmonic scaling. All use easing functions from `js/ui/animation.js`.
+
+Jump game also includes:
+- Parallax scrolling background with three-stage height segments (Forest: 0~2000px, Ruins: 2000~4000px, Sky: 4000px+). In the Sky segment, Y coordinates for stars and floating clouds wrap infinitely (`y = (cameraY * parallaxSpeed) % designHeight`) to avoid empty space during endless climbs.
+- Adaptive rendering centers: Slime eyes are dynamically transformed and aligned inside the `scale(scaleX, scaleY)` matrix coordinate system to prevent drifting during charge and squashing phases.
+- Ambient particles: Meteor trails, stamp landing particles, and speed lines.
 
 Reusable overlays belong in `js/ui/`. `ConfigModal` is used before starting configurable games. `ResultModal` is used after completion. `Confetti` is a shared host-level effect exposed through `host.effects`. `quotes.js` acts as a static collection of zen-styled quotes and game-specific tips, rendered randomly at the bottom of the menu and game scenes.
 

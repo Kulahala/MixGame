@@ -13,6 +13,8 @@
 - 数回：支持点线回路解密（5x5、7x7），点击虚线段围成唯一不分叉闭合环。
 - 森之王国：独创的 2x4 积木卡牌天平战役策略对决，支持三关 Boss 战役与 Deckbuilding。
 - 一笔画：首发连续滑线益智格子（4x4、5x5、6x6），支持手指连续拖拽划线，倒退擦除或点击历史点自动回滚。
+- 黑白棋：8x8 棋盘人机对决，支持简单、普通和困难（Minimax 算法 + Alpha-Beta 剪枝）三档 AI 棋力，搭载平滑 3D 翻子与涟漪波浪延迟动画。
+- 跃上云巅：动感 Slime 攀爬游戏，拥有森林/遗迹/天空三阶段高度（各2000px区间，天空段支持背景无限取模循环），搭载蓄力简谐形变、情绪眼睛、流星踩踏粒子特效及基于抛物线的 100% 物理可达性校验算法。
 - 本地成绩：使用 `wx.setStorageSync` / `wx.getStorageSync` 保存最佳成绩和最近成绩。
 - 高 DPI 适配：Canvas 按 `devicePixelRatio` 缩放，在高清屏上文字和线条更清晰。
 - 浏览器调试壳：用于快速检查 UI、点击流程和基础交互，不影响微信小游戏正式入口。
@@ -42,7 +44,9 @@
 │   │   ├── memory/                 # 记忆翻牌玩法
 │   │   ├── slitherlink/            # 数回玩法
 │   │   ├── woodkingdom/            # 森之王国卡牌玩法
-│   │   └── onestroke/              # 一笔画玩法
+│   │   ├── onestroke/              # 一笔画玩法
+│   │   ├── reversi/                # 黑白棋玩法
+│   │   └── jump/                   # 跃上云巅玩法
 │   ├── scenes/                     # 游戏大厅等场景
 │   ├── themes/                     # 主题色、字体、圆角
 │   ├── ui/                         # Canvas UI 工具
@@ -95,6 +99,10 @@ http://127.0.0.1:8765/dev/browser.html
 node js/games/onestroke/test_state.js
 # 运行森之王国状态机测试
 node js/games/woodkingdom/test_state.js
+# 运行黑白棋状态机与AI对弈测试
+node js/games/reversi/test_state.js
+# 运行跃上云巅物理引擎与可达性测试
+node js/games/jump/test_state.js
 ```
 
 静态语法走查与日常验证：
