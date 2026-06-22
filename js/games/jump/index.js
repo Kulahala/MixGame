@@ -26,6 +26,15 @@ function interpolateColor(color1, color2, factor) {
   return `#${rHex}${gHex}${bHex}`;
 }
 
+// 带有透明度通道的 RGBA 颜色插值函数，用于平滑过渡远云与斜槽斑马线
+function interpolateRgba(c1, c2, factor) {
+  const r = Math.round(c1.r + (c2.r - c1.r) * factor);
+  const g = Math.round(c1.g + (c2.g - c1.g) * factor);
+  const b = Math.round(c1.b + (c2.b - c1.b) * factor);
+  const a = c1.a + (c2.a - c1.a) * factor;
+  return `rgba(${r}, ${g}, ${b}, ${a})`;
+}
+
 // 篝火小粒子效果
 class CampfireParticle {
   constructor(x, y) {
@@ -84,10 +93,21 @@ class GameParticle {
   render(ctx) {
     ctx.save();
     ctx.globalAlpha = this.alpha;
-    ctx.fillStyle = this.color;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fill();
+    const speedSq = this.vx * this.vx + this.vy * this.vy;
+    if (speedSq >= 0.04) {
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = this.radius * 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.x - this.vx * 18, this.y - this.vy * 18);
+      ctx.lineTo(this.x, this.y);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }
@@ -457,6 +477,27 @@ export default class JumpScene extends BaseGameScene {
       }
     }
 
+    // 在无尽模式天空层的深夜段，定时生成高速流星粒子（复用 GameParticle 拉丝特效）
+    if (this.state.mode === 'endless') {
+      const skyY = -850 - this.designH;
+      if (this.cameraY < skyY) {
+        const skyAltitude = Math.max(0, skyY - this.cameraY);
+        const periodProgress = (skyAltitude % 4000) / 4000;
+        if (periodProgress >= 0.5 && periodProgress <= 0.75 && Math.random() < 0.008) {
+          this.addParticle(new GameParticle({
+            x: Math.random() * this.designW * 0.8,
+            y: this.cameraY + Math.random() * 200,
+            vx: 0.35 + Math.random() * 0.15,
+            vy: 0.2 + Math.random() * 0.1,
+            radius: 1.2 + Math.random() * 0.8,
+            color: '#ffffff',
+            decay: 0.0006 + Math.random() * 0.0004,
+            gravity: 0
+          }));
+        }
+      }
+    }
+
     // 终局胜利检测 (仅在经典模式下有 3200px 顶峰结算)
     if (this.state.mode === 'classic' && this.state.saved && !this.completed) {
       this.completed = true;
@@ -689,47 +730,173 @@ export default class JumpScene extends BaseGameScene {
     ctx.restore();
   }
 
+  // 计算天空层昼夜循环的颜色配置 (中午->傍晚->深夜->清晨)
+  getSkyTimeColors(p) {
+    const states = [
+      { // 0: Noon (中午)
+        skyTop: '#7bbfea', skyBottom: '#e8f5fd',
+        plat: '#fffdf2', stroke: '#ffd54f',
+        bubble: '#fffbf2', slideBg: '#fff7d6',
+        stripe: { r: 255, g: 213, b: 79, a: 0.5 },
+        farCloud: { r: 255, g: 255, b: 255, a: 0.28 }
+      },
+      { // 1: Dusk (傍晚)
+        skyTop: '#e67e80', skyBottom: '#4a374a',
+        plat: '#ffe6e6', stroke: '#f06292',
+        bubble: '#fff0f0', slideBg: '#fce4ec',
+        stripe: { r: 240, g: 98, b: 146, a: 0.5 },
+        farCloud: { r: 240, g: 200, b: 210, a: 0.24 }
+      },
+      { // 2: Night (深夜)
+        skyTop: '#0b0f19', skyBottom: '#1a233a',
+        plat: '#a9c0d0', stroke: '#29b6f6',
+        bubble: '#b8cddc', slideBg: '#455a64',
+        stripe: { r: 41, g: 182, b: 246, a: 0.5 },
+        farCloud: { r: 150, g: 180, b: 210, a: 0.15 }
+      },
+      { // 3: Dawn (清晨)
+        skyTop: '#ccd9e8', skyBottom: '#fdf6e2',
+        plat: '#f5f8fa', stroke: '#b0bec5',
+        bubble: '#edf1f5', slideBg: '#eceff1',
+        stripe: { r: 176, g: 190, b: 197, a: 0.5 },
+        farCloud: { r: 240, g: 245, b: 250, a: 0.26 }
+      }
+    ];
+
+    const stateCount = states.length;
+    const scaled = p * stateCount;
+    const index1 = Math.floor(scaled) % stateCount;
+    const index2 = (index1 + 1) % stateCount;
+    const t = scaled - Math.floor(scaled);
+
+    const s1 = states[index1];
+    const s2 = states[index2];
+
+    return {
+      skyTop: interpolateColor(s1.skyTop, s2.skyTop, t),
+      skyBottom: interpolateColor(s1.skyBottom, s2.skyBottom, t),
+      plat: interpolateColor(s1.plat, s2.plat, t),
+      stroke: interpolateColor(s1.stroke, s2.stroke, t),
+      bubble: interpolateColor(s1.bubble, s2.bubble, t),
+      slideBg: interpolateColor(s1.slideBg, s2.slideBg, t),
+      stripe: interpolateRgba(s1.stripe, s2.stripe, t),
+      farCloud: interpolateRgba(s1.farCloud, s2.farCloud, t)
+    };
+  }
+
   // 天空阶段星宿恒星视差绘制
   drawSkyParallax(ctx, skyAlpha) {
     if (skyAlpha <= 0.01) return;
     ctx.save();
     ctx.globalAlpha = skyAlpha;
 
-    // 1. 星空
-    const starSpeed = 0.05;
-    const starLoopH = 400;
-    let starYOffset = -(this.cameraY * starSpeed) % starLoopH;
-    if (starYOffset > 0) starYOffset -= starLoopH;
+    // 计算昼夜循环进度 p
+    const isEndless = this.state.mode === 'endless';
+    const skyLimitY = isEndless ? -850 : 1100;
+    const skyAltitude = Math.max(0, skyLimitY - this.cameraY);
+    const periodProgress = (skyAltitude % 4000) / 4000;
 
-    const starSeeds = [
-      { x: 30, y: 50, r: 1.2 },
-      { x: 120, y: 150, r: 1.8 },
-      { x: 280, y: 80, r: 1 },
-      { x: 210, y: 220, r: 1.5 },
-      { x: 80, y: 320, r: 1 },
-      { x: 320, y: 350, r: 1.6 },
-    ];
+    // 获取插值后的远云与天空阶段颜色
+    const timeColors = this.getSkyTimeColors(periodProgress);
 
-    ctx.fillStyle = '#ffffff';
-    for (let offset = starYOffset; offset < this.designH; offset += starLoopH) {
-      starSeeds.forEach(star => {
-        const flash = 0.6 + 0.4 * Math.sin((Date.now() / 300) + star.x);
-        ctx.save();
-        ctx.globalAlpha = skyAlpha * flash;
-        ctx.beginPath();
-        ctx.arc(star.x, offset + star.y, star.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
+    // 1. 太阳与月亮物理移动 (Alpha 乘以 skyAlpha，防止闪现)
+    // 太阳判定 (白日 d 在 0 ~ 1)
+    let d = -1;
+    if (periodProgress >= 0.75) d = (periodProgress - 0.75) / 0.75;
+    else if (periodProgress < 0.5) d = (periodProgress + 0.25) / 0.75;
+
+    if (d >= 0) {
+      const sunX = 40 + (this.designW - 80) * d;
+      const sunY = 300 - 240 * Math.sin(d * Math.PI);
+      const sunAlpha = Math.sin(d * Math.PI) * skyAlpha;
+
+      // 太阳颜色插值 (从清晨/傍晚的暖红 #e65a3c 到中午的暖黄 #fff5cc)
+      const sunColor = d <= 0.5 
+        ? interpolateColor('#e65a3c', '#fff5cc', d / 0.5)
+        : interpolateColor('#fff5cc', '#e65a3c', (d - 0.5) / 0.5);
+
+      ctx.save();
+      ctx.globalAlpha = sunAlpha;
+      
+      // 太阳暖光晕
+      const radGrad = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 30);
+      radGrad.addColorStop(0, sunColor);
+      radGrad.addColorStop(0.3, sunColor);
+      radGrad.addColorStop(1, 'rgba(255, 235, 180, 0)');
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(sunX, sunY, 30, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
-    // 2. 远云
+    // 月亮判定 (深夜 n 在 0 ~ 1)
+    if (periodProgress >= 0.25 && periodProgress <= 0.75) {
+      const n = (periodProgress - 0.25) / 0.5;
+      const moonX = this.designW - 40 - (this.designW - 80) * n;
+      const moonY = 300 - 200 * Math.sin(n * Math.PI);
+      const moonAlpha = Math.sin(n * Math.PI) * skyAlpha;
+
+      ctx.save();
+      ctx.globalAlpha = moonAlpha;
+      
+      // 精致弯月的贝塞尔画法 (优化锯齿与性能)
+      ctx.fillStyle = '#ffdf6d';
+      ctx.shadowColor = 'rgba(255, 223, 109, 0.4)';
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, 15, -Math.PI * 0.5, Math.PI * 0.5, false);
+      ctx.quadraticCurveTo(moonX + 15 * 0.25, moonY, moonX, moonY - 15);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2. 星空 (星星透明度受昼夜阶段调制)
+    let starPhaseAlpha = 0;
+    if (periodProgress >= 0.25 && periodProgress < 0.5) {
+      starPhaseAlpha = (periodProgress - 0.25) / 0.25;
+    } else if (periodProgress >= 0.5 && periodProgress < 0.75) {
+      starPhaseAlpha = 1.0;
+    } else if (periodProgress >= 0.75 && periodProgress < 1.0) {
+      starPhaseAlpha = 1.0 - (periodProgress - 0.75) / 0.25;
+    }
+
+    if (starPhaseAlpha > 0.01) {
+      const starSpeed = 0.05;
+      const starLoopH = 400;
+      let starYOffset = -(this.cameraY * starSpeed) % starLoopH;
+      if (starYOffset > 0) starYOffset -= starLoopH;
+
+      const starSeeds = [
+        { x: 30, y: 50, r: 1.2 },
+        { x: 120, y: 150, r: 1.8 },
+        { x: 280, y: 80, r: 1 },
+        { x: 210, y: 220, r: 1.5 },
+        { x: 80, y: 320, r: 1 },
+        { x: 320, y: 350, r: 1.6 },
+      ];
+
+      ctx.fillStyle = '#ffffff';
+      for (let offset = starYOffset; offset < this.designH; offset += starLoopH) {
+        starSeeds.forEach(star => {
+          const flash = 0.6 + 0.4 * Math.sin((Date.now() / 300) + star.x);
+          ctx.save();
+          ctx.globalAlpha = skyAlpha * starPhaseAlpha * flash;
+          ctx.beginPath();
+          ctx.arc(star.x, offset + star.y, star.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+    }
+
+    // 3. 远云 (同步变色)
     const cloudSpeed = 0.2;
     const cloudLoopH = 500;
     let cloudYOffset = -(this.cameraY * cloudSpeed) % cloudLoopH;
     if (cloudYOffset > 0) cloudYOffset -= cloudLoopH;
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.fillStyle = timeColors.farCloud;
     for (let offset = cloudYOffset; offset < this.designH; offset += cloudLoopH) {
       this.drawSingleCloud(ctx, 70, offset + 120, 50);
       this.drawSingleCloud(ctx, this.designW - 90, offset + 330, 65);
@@ -897,13 +1064,18 @@ export default class JumpScene extends BaseGameScene {
     const ruinsY = isEndless ? (1150 - this.designH) : (1650 - this.designH);
     const skyY = isEndless ? (-850 - this.designH) : 0;
 
+    // 计算高空昼夜流转的时间因子与各阶段插值色
+    const skyAltitude = Math.max(0, skyY - this.cameraY);
+    const periodProgress = (skyAltitude % 4000) / 4000;
+    const timeColors = this.getSkyTimeColors(periodProgress);
+
     let colorTop = '#e5ebd7';
     let colorBottom = '#d8e5d9';
 
     const colors = {
       forest: { top: '#e5ebd7', bottom: '#d8e5d9' },
       ruins:  { top: '#ebdecb', bottom: '#e6ebd5' },
-      sky:    { top: '#d1e6f5', bottom: '#ebe0ca' }
+      sky:    { top: timeColors.skyTop, bottom: timeColors.skyBottom }
     };
 
     if (this.cameraY >= ruinsY) {
@@ -1017,11 +1189,11 @@ export default class JumpScene extends BaseGameScene {
           stripeColor = 'rgba(238, 235, 230, 0.3)';
           strokeColor = '#80776b';
         } else if (theme === 'cloud') {
-          flatColor = '#ffffff';
-          grainColor = '#ebf3f7'; // 云朵内泡泡色
-          slideBgColor = '#d9e6ed';
-          stripeColor = 'rgba(255, 255, 255, 0.85)';
-          strokeColor = '#ccdbe3';
+          flatColor = timeColors.plat;
+          grainColor = timeColors.bubble; // 云朵内泡泡色
+          slideBgColor = timeColors.slideBg;
+          stripeColor = timeColors.stripe;
+          strokeColor = timeColors.stroke;
         }
 
         // 1. 绘制平顶平台部分 (Safe Landing Deck)
@@ -1139,8 +1311,8 @@ export default class JumpScene extends BaseGameScene {
           platColor = '#a89e90'; // 石质 (遗迹)
           strokeColor = '#80776b';
         } else if (theme === 'cloud') {
-          platColor = '#ffffff'; // 云朵 (顶)
-          strokeColor = '#ccdbe3';
+          platColor = timeColors.plat; // 云朵 (顶)
+          strokeColor = timeColors.stroke;
         }
 
         fillRoundRect(ctx, p.x, p.y, p.w, p.h, 4, platColor);
