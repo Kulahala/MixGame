@@ -113,11 +113,23 @@ export class ChunkGenerator {
     const templateIdx = Math.floor(rng() * SECTION_TEMPLATES.length);
     const template = SECTION_TEMPLATES[templateIdx];
 
+    // 获取上一个区块的最顶端平台，用来做跨区块边界错位与高度可达性约束
+    let prevTopPlat = null;
+    if (idx > 0 && this.chunkCache.has(idx - 1)) {
+      const prevPlatforms = this.chunkCache.get(idx - 1);
+      if (prevPlatforms && prevPlatforms.length > 0) {
+        prevTopPlat = prevPlatforms.reduce((min, p) => p.y < min.y ? p : min, prevPlatforms[0]);
+      }
+    } else if (idx === 0) {
+      // 0 号区块以地面为起跳基准
+      prevTopPlat = { x: 0, y: 3150, w: 360, h: 50, type: 'wood' };
+    }
+
     const platforms = [];
     const baseY = this.startY - idx * this.chunkHeight;
 
     template.forEach(p => {
-      // 局部微调微调
+      // 局部微调
       const xOffset = Math.floor((rng() - 0.5) * 26); // x坐标微调 ±13px
       const wOffset = Math.floor((rng() - 0.5) * 16); // 宽度微调 ±8px
 
@@ -130,15 +142,77 @@ export class ChunkGenerator {
 
       const platformY = baseY + p.ry;
 
+      // 根据 chunk 索引 idx 动态匹配当前阶段材质，消除混杂平台的违和感
+      let platformType = p.type;
+      if (p.type !== 'slope') {
+        if (idx <= 3) {
+          platformType = 'wood';
+        } else if (idx <= 7) {
+          platformType = 'stone';
+        } else {
+          platformType = 'cloud';
+        }
+      }
+
       platforms.push({
         x: newX,
         y: platformY,
         w: newW,
         h: p.h,
-        type: p.type,
+        type: platformType,
         slopeDir: p.slopeDir || null
       });
     });
+
+    // ─── 物理可达性与错位链式修整算法 (Accessibility Resolution) ───
+    // 将平台按 Y 坐标从大到小（从底到顶）排序进行逐级物理修整
+    platforms.sort((a, b) => b.y - a.y);
+
+    for (let i = 0; i < platforms.length; i++) {
+      const curr = platforms[i];
+      const prev = (i === 0) ? prevTopPlat : platforms[i - 1];
+
+      if (prev) {
+        // 1. 计算最窄水平跨度 dx
+        let dx = 0;
+        if (curr.x + curr.w < prev.x) {
+          dx = prev.x - (curr.x + curr.w);
+        } else if (prev.x + prev.w < curr.x) {
+          dx = curr.x - (prev.x + prev.w);
+        }
+
+        // 2. 根据水平跨度线性约束最大安全垂直跳跃高度 dy_max
+        // 确保斜跳时高度差收拢，直跳时保留适当冗余高度 (保留 205px 左右舒适高度，物理极限是 310px)
+        const maxSafeDy = Math.max(90, 205 - dx * 0.45);
+        const dy = prev.y - curr.y;
+
+        if (dy > maxSafeDy) {
+          curr.y = prev.y - maxSafeDy; // 超限则强制拉低，使其处于安全可达距离内
+        }
+
+        // 3. 防撞头重叠与横向错位约束 (如果高度差在撞头范围内，且重叠度高，执行横向推开)
+        const currentDy = prev.y - curr.y;
+        if (currentDy < 175) {
+          const mid1 = prev.x + prev.w / 2;
+          const mid2 = curr.x + curr.w / 2;
+          if (Math.abs(mid1 - mid2) < 80) {
+            if (mid1 < 180) {
+              curr.x = Math.max(prev.x + prev.w - 10, curr.x); // 下方偏左，把当前往右推
+            } else {
+              curr.x = Math.min(prev.x - curr.w + 10, curr.x); // 下方偏右，把当前往左推
+            }
+            curr.w = Math.max(30, Math.min(curr.w, 280));
+            curr.x = Math.max(5, Math.min(curr.x, 360 - curr.w - 5));
+          }
+        }
+
+        // 4. 垂直高度下限约束 (防止平台太矮发生几何重合)
+        const minHeightLimit = 75;
+        if (prev.y - curr.y < minHeightLimit) {
+          curr.y = prev.y - minHeightLimit;
+        }
+      }
+    }
 
     return platforms;
   }
@@ -149,14 +223,10 @@ export class ChunkGenerator {
    * @param {number} maxY - 视口最大 Y 坐标
    */
   getPlatformsInRange(minY, maxY) {
-    // 计算当前视口跨越了哪些 chunk 索引
-    // 例如：Y 坐标 3100 以下是 chunk 0，3100 ~ 2600 也是 chunk 0
     const startIdx = Math.max(0, Math.floor((this.startY - maxY) / this.chunkHeight));
     const endIdx = Math.max(0, Math.floor((this.startY - minY) / this.chunkHeight));
 
     const result = [];
-    
-    // 加载地面 (始终常驻)
     result.push({ x: 0, y: 3150, w: 360, h: 50, type: 'wood' });
 
     for (let idx = startIdx; idx <= endIdx; idx++) {

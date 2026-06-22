@@ -57,6 +57,41 @@ class CampfireParticle {
   }
 }
 
+// 物理特效粒子类
+class GameParticle {
+  constructor(options) {
+    this.x = options.x;
+    this.y = options.y;
+    this.vx = options.vx || 0;
+    this.vy = options.vy || 0;
+    this.radius = options.radius || 2;
+    this.color = options.color || '#ffffff';
+    this.alpha = options.alpha !== undefined ? options.alpha : 1.0;
+    this.decay = options.decay || 0.002; // 每毫秒衰减
+    this.gravity = options.gravity || 0; // 粒子重力
+    this.grow = options.grow || 0;       // 半径变化速度
+  }
+
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vy += this.gravity * dt;
+    this.radius = Math.max(0.1, this.radius + this.grow * dt);
+    this.alpha -= this.decay * dt;
+    if (this.alpha < 0) this.alpha = 0;
+  }
+
+  render(ctx) {
+    ctx.save();
+    ctx.globalAlpha = this.alpha;
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
 // 存档提示弹窗 Custom Modal
 class SessionModal {
   constructor(options) {
@@ -165,8 +200,9 @@ export default class JumpScene extends BaseGameScene {
     this.dragStart = null; // { x, y } (逻辑坐标)
     this.dragCurrent = null; // { x, y }
 
-    // 篝火火焰粒子数组
+    // 篝火火焰粒子数组与物理特效粒子数组
     this.campfireParticles = [];
+    this.particles = [];
 
     // 存档引导 modal
     this.sessionModal = null;
@@ -220,6 +256,7 @@ export default class JumpScene extends BaseGameScene {
 
     // 篝火复位
     this.cameraY = 3200 - this.designH;
+    this.particles = [];
 
     // 读取存档 (仅在经典模式下加载存档)
     if (this.state.mode === 'classic') {
@@ -276,6 +313,7 @@ export default class JumpScene extends BaseGameScene {
     this.cameraY = this.state.y - this.designH * 0.6;
     this.bottomQuote = getRandomQuote('jump') || '每一堆燃起的篝火，都是攀登者的誓言。';
     this.lastVibrateStep = 0;
+    this.particles = [];
   }
 
   exit(callback) {
@@ -287,6 +325,14 @@ export default class JumpScene extends BaseGameScene {
       });
     }
     super.exit(callback);
+  }
+
+  // 物理特效粒子管理（FIFO 限定 120 个上限）
+  addParticle(p) {
+    if (this.particles.length >= 120) {
+      this.particles.shift();
+    }
+    this.particles.push(p);
   }
 
   update(dt = 16) {
@@ -309,13 +355,83 @@ export default class JumpScene extends BaseGameScene {
           wx.vibrateShort({ type: 'light' });  // 轻微着陆
         }
       }
+
+      // 生成落地冲击尘土环
+      const px = this.state.x;
+      const py = this.state.y + this.state.radius;
+      for (let i = 0; i < 12; i++) {
+        const vx = (Math.random() > 0.5 ? 1 : -1) * (0.05 + Math.random() * 0.12);
+        const vy = -0.01 - Math.random() * 0.03;
+        this.addParticle(new GameParticle({
+          x: px,
+          y: py,
+          vx: vx,
+          vy: vy,
+          radius: 2.5 + Math.random() * 2,
+          color: 'rgba(220, 220, 220, 0.8)',
+          decay: 0.0015 + Math.random() * 0.0015,
+          grow: -0.0015,
+          gravity: 0.0001
+        }));
+      }
     }
 
-    // 监听撞击反弹事件，触发轻微触觉反馈
+    // 监听撞击反弹事件，触发轻微触觉反馈并生成撞击碎屑
     if (this.state.justBouncedWall || this.state.justBouncedCeiling) {
       if (typeof wx !== 'undefined' && wx.vibrateShort) {
         wx.vibrateShort({ type: 'light' });
       }
+
+      const isWall = this.state.justBouncedWall;
+      let px = this.state.x;
+      let py = this.state.y;
+      if (isWall) {
+        px = this.state.vx > 0 ? this.state.x - this.state.radius : this.state.x + this.state.radius;
+      } else {
+        py = this.state.y - this.state.radius;
+      }
+
+      // 确定碎屑颜色
+      let sparkColor = '#ffffff';
+      if (this.cameraY >= 1650 - this.designH) {
+        sparkColor = Math.random() > 0.4 ? '#8b5a2b' : '#cd853f'; // 森林阶段：木屑色
+      } else if (this.cameraY >= 1100 - this.designH) {
+        sparkColor = Math.random() > 0.4 ? '#9c9c9c' : '#8b7d6b'; // 遗迹阶段：石屑色
+      } else {
+        sparkColor = Math.random() > 0.4 ? '#ffffff' : '#b0e2ff'; // 天空阶段：光屑色
+      }
+
+      // 生成 10 个碎屑粒子
+      for (let i = 0; i < 10; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 0.06 + Math.random() * 0.12;
+        this.addParticle(new GameParticle({
+          x: px,
+          y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          radius: 1.2 + Math.random() * 1.5,
+          color: sparkColor,
+          decay: 0.003 + Math.random() * 0.003,
+          grow: -0.001,
+          gravity: 0.0003 // 碎屑受重力下落
+        }));
+      }
+    }
+
+    // 生成空中拖尾粒子
+    if (this.state.state === 'jumping' || this.state.state === 'falling' || this.state.state === 'sliding') {
+      this.addParticle(new GameParticle({
+        x: this.state.x + (Math.random() - 0.5) * 4,
+        y: this.state.y + (Math.random() - 0.5) * 4,
+        vx: -this.state.vx * 0.1,
+        vy: -this.state.vy * 0.1,
+        radius: this.state.radius * 0.8,
+        color: 'rgba(126, 163, 140, 0.35)',
+        decay: 0.003,
+        grow: -0.01,
+        gravity: 0
+      }));
     }
 
     // 平滑镜头追随 (60% 屏幕处)
@@ -326,9 +442,12 @@ export default class JumpScene extends BaseGameScene {
       : Math.max(0, Math.min(maxCamY, targetCameraY));
     this.cameraY += (limitCamY - this.cameraY) * 0.08;
 
-    // 篝火火焰粒子更新
+    // 火焰与物理特效粒子更新
     this.campfireParticles.forEach(p => p.update(dt));
     this.campfireParticles = this.campfireParticles.filter(p => p.alpha > 0);
+
+    this.particles.forEach(p => p.update(dt));
+    this.particles = this.particles.filter(p => p.alpha > 0);
 
     // 经典模式下，周期性往点亮的篝火里扔火焰粒子
     if (this.state.mode === 'classic') {
@@ -454,6 +573,312 @@ export default class JumpScene extends BaseGameScene {
 
     this.state.state = 'idle'; // 先临时改回 idle 以触发 jump 判定
     this.state.jump(dirX, dirY, Math.min(1.0, dist / 110));
+
+    // 起跳扬尘粒子
+    const px = this.state.x;
+    const py = this.state.y + this.state.radius;
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.PI + (Math.random() - 0.5) * (Math.PI * 0.5);
+      const speed = 0.05 + Math.random() * 0.08;
+      this.addParticle(new GameParticle({
+        x: px,
+        y: py,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        radius: 1.5 + Math.random() * 1.5,
+        color: 'rgba(240, 240, 240, 0.75)',
+        decay: 0.002,
+        grow: -0.002,
+        gravity: 0
+      }));
+    }
+  }
+
+  getPhaseAlphas() {
+    let forestAlpha = 1.0;
+    let ruinsAlpha = 0.0;
+    let skyAlpha = 0.0;
+
+    const isEndless = this.state.mode === 'endless';
+    const forestY = 3200 - this.designH;
+    const ruinsY = isEndless ? (1150 - this.designH) : (1650 - this.designH);
+    const skyY = isEndless ? (-850 - this.designH) : 0;
+
+    if (this.cameraY >= ruinsY) {
+      const range = forestY - ruinsY;
+      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - ruinsY) / range)) : 1.0;
+      forestAlpha = factor;
+      ruinsAlpha = 1 - factor;
+      skyAlpha = 0;
+    } else {
+      const range = ruinsY - skyY;
+      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - skyY) / range)) : 0.0;
+      forestAlpha = 0;
+      ruinsAlpha = factor;
+      skyAlpha = 1 - factor;
+    }
+
+    return { forestAlpha, ruinsAlpha, skyAlpha };
+  }
+
+  // 森林阶段远山树影视差绘制 (支持无缝取模滚动)
+  drawForestParallax(ctx, forestAlpha) {
+    if (forestAlpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = forestAlpha;
+
+    const speed = 0.15;
+    const loopH = 600;
+    let yOffset = -(this.cameraY * speed) % loopH;
+    if (yOffset > 0) yOffset -= loopH;
+
+    for (let offset = yOffset; offset < this.designH; offset += loopH) {
+      // 远山
+      ctx.fillStyle = 'rgba(95, 122, 103, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(0, offset + loopH * 2);
+      ctx.lineTo(0, offset + 350);
+      ctx.quadraticCurveTo(this.designW * 0.25, offset + 250, this.designW * 0.5, offset + 320);
+      ctx.quadraticCurveTo(this.designW * 0.75, offset + 280, this.designW, offset + 240);
+      ctx.lineTo(this.designW, offset + loopH * 2);
+      ctx.fill();
+
+      // 近山/树影
+      ctx.fillStyle = 'rgba(79, 102, 85, 0.3)';
+      ctx.beginPath();
+      ctx.moveTo(0, offset + loopH * 2);
+      ctx.lineTo(0, offset + 450);
+      ctx.quadraticCurveTo(this.designW * 0.35, offset + 380, this.designW * 0.7, offset + 430);
+      ctx.quadraticCurveTo(this.designW * 0.85, offset + 400, this.designW, offset + 460);
+      ctx.lineTo(this.designW, offset + loopH * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // 遗迹阶段巨石墙影视差绘制 (支持无缝取模滚动)
+  drawRuinsParallax(ctx, ruinsAlpha) {
+    if (ruinsAlpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = ruinsAlpha;
+
+    const speed = 0.25;
+    const loopH = 700;
+    let yOffset = -(this.cameraY * speed) % loopH;
+    if (yOffset > 0) yOffset -= loopH;
+
+    for (let offset = yOffset; offset < this.designH; offset += loopH) {
+      ctx.fillStyle = 'rgba(168, 158, 144, 0.18)';
+      
+      // 左石柱
+      ctx.fillRect(40, offset + 100, 20, 500);
+      ctx.fillRect(35, offset + 90, 30, 10);
+      ctx.fillRect(35, offset + 590, 30, 10);
+
+      // 右石柱
+      ctx.fillRect(this.designW - 70, offset + 250, 25, 450);
+      ctx.fillRect(this.designW - 75, offset + 240, 35, 10);
+      
+      // 废墟拱门背景影
+      ctx.strokeStyle = 'rgba(168, 158, 144, 0.12)';
+      ctx.lineWidth = 15;
+      ctx.beginPath();
+      ctx.arc(this.designW / 2, offset + 500, 80, Math.PI, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // 天空阶段星宿恒星视差绘制
+  drawSkyParallax(ctx, skyAlpha) {
+    if (skyAlpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = skyAlpha;
+
+    // 1. 星空
+    const starSpeed = 0.05;
+    const starLoopH = 400;
+    let starYOffset = -(this.cameraY * starSpeed) % starLoopH;
+    if (starYOffset > 0) starYOffset -= starLoopH;
+
+    const starSeeds = [
+      { x: 30, y: 50, r: 1.2 },
+      { x: 120, y: 150, r: 1.8 },
+      { x: 280, y: 80, r: 1 },
+      { x: 210, y: 220, r: 1.5 },
+      { x: 80, y: 320, r: 1 },
+      { x: 320, y: 350, r: 1.6 },
+    ];
+
+    ctx.fillStyle = '#ffffff';
+    for (let offset = starYOffset; offset < this.designH; offset += starLoopH) {
+      starSeeds.forEach(star => {
+        const flash = 0.6 + 0.4 * Math.sin((Date.now() / 300) + star.x);
+        ctx.save();
+        ctx.globalAlpha = skyAlpha * flash;
+        ctx.beginPath();
+        ctx.arc(star.x, offset + star.y, star.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // 2. 远云
+    const cloudSpeed = 0.2;
+    const cloudLoopH = 500;
+    let cloudYOffset = -(this.cameraY * cloudSpeed) % cloudLoopH;
+    if (cloudYOffset > 0) cloudYOffset -= cloudLoopH;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+    for (let offset = cloudYOffset; offset < this.designH; offset += cloudLoopH) {
+      this.drawSingleCloud(ctx, 70, offset + 120, 50);
+      this.drawSingleCloud(ctx, this.designW - 90, offset + 330, 65);
+    }
+
+    ctx.restore();
+  }
+
+  drawSingleCloud(ctx, cx, cy, w) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, w * 0.3, 0, Math.PI * 2);
+    ctx.arc(cx - w * 0.22, cy + w * 0.05, w * 0.22, 0, Math.PI * 2);
+    ctx.arc(cx + w * 0.22, cy + w * 0.05, w * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 绘制森林藤蔓墙壁分段 (左/右侧边缘)
+  drawVineSegment(ctx, y, h) {
+    ctx.save();
+    
+    // 1. 绘制左侧藤蔓主干
+    ctx.strokeStyle = '#384c3f';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(3, y);
+    ctx.bezierCurveTo(6, y + h * 0.25, 0, y + h * 0.75, 3, y + h);
+    ctx.stroke();
+
+    // 2. 绘制右侧藤蔓主干
+    ctx.beginPath();
+    ctx.moveTo(this.designW - 3, y);
+    ctx.bezierCurveTo(this.designW - 6, y + h * 0.25, this.designW, y + h * 0.75, this.designW - 3, y + h);
+    ctx.stroke();
+
+    // 3. 绘制装饰叶片
+    const drawLeaf = (lx, ly, isLeftWall, angle) => {
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(isLeftWall ? angle : -angle - Math.PI);
+      ctx.fillStyle = '#4f6957';
+      ctx.strokeStyle = '#2d3b32';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(8, -5, 12, 0);
+      ctx.quadraticCurveTo(8, 5, 0, 0);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    // 在左右侧主干的固定高度处长出叶片
+    drawLeaf(4, y + 25, true, -Math.PI / 6);
+    drawLeaf(2, y + 65, true, Math.PI / 8);
+    drawLeaf(4, y + 95, true, -Math.PI / 4);
+
+    drawLeaf(this.designW - 4, y + 15, false, -Math.PI / 5);
+    drawLeaf(this.designW - 2, y + 55, false, Math.PI / 6);
+    drawLeaf(this.designW - 4, y + 85, false, -Math.PI / 3);
+
+    ctx.restore();
+  }
+
+  // 绘制遗迹石壁墙壁分段 (左/右侧边缘)
+  drawRuinsWallSegment(ctx, y, h) {
+    ctx.save();
+    ctx.fillStyle = '#8a7e70';
+    ctx.strokeStyle = '#5a5146';
+    ctx.lineWidth = 1.5;
+
+    // 左侧石壁轮廓 (凹凸有致)
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(10, y);
+    ctx.lineTo(7, y + h * 0.25);
+    ctx.lineTo(12, y + h * 0.5);
+    ctx.lineTo(8, y + h * 0.75);
+    ctx.lineTo(11, y + h);
+    ctx.lineTo(0, y + h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 绘制左侧石块缝隙缝合线
+    ctx.beginPath();
+    ctx.moveTo(0, y + h * 0.3);
+    ctx.lineTo(9, y + h * 0.3);
+    ctx.moveTo(0, y + h * 0.7);
+    ctx.lineTo(10, y + h * 0.7);
+    ctx.stroke();
+
+    // 右侧石壁轮廓
+    ctx.beginPath();
+    ctx.moveTo(this.designW, y);
+    ctx.lineTo(this.designW - 10, y);
+    ctx.lineTo(this.designW - 7, y + h * 0.25);
+    ctx.lineTo(this.designW - 12, y + h * 0.5);
+    ctx.lineTo(this.designW - 8, y + h * 0.75);
+    ctx.lineTo(this.designW - 11, y + h);
+    ctx.lineTo(this.designW, y + h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 绘制右侧石块缝隙缝合线
+    ctx.beginPath();
+    ctx.moveTo(this.designW, y + h * 0.3);
+    ctx.lineTo(this.designW - 9, y + h * 0.3);
+    ctx.moveTo(this.designW, y + h * 0.7);
+    ctx.lineTo(this.designW - 10, y + h * 0.7);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 绘制天空云壁墙壁分段 (左/右侧边缘)
+  drawSkyCloudSegment(ctx, y, h) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+    ctx.strokeStyle = '#ccdbe3';
+    ctx.lineWidth = 1.5;
+
+    // 绘制左侧云层边界 (由多个重叠半圆组成)
+    const drawCloudBubbleLeft = (cx, cy, r) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2);
+      ctx.fill();
+      ctx.stroke();
+    };
+
+    // 绘制右侧云层边界
+    const drawCloudBubbleRight = (cx, cy, r) => {
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, Math.PI / 2, -Math.PI / 2);
+      ctx.fill();
+      ctx.stroke();
+    };
+
+    // 绘制左侧泡泡云
+    drawCloudBubbleLeft(0, y + 20, 11);
+    drawCloudBubbleLeft(-2, y + 55, 14);
+    drawCloudBubbleLeft(1, y + 95, 10);
+
+    // 绘制右侧泡泡云
+    drawCloudBubbleRight(this.designW, y + 25, 10);
+    drawCloudBubbleRight(this.designW + 2, y + 60, 15);
+    drawCloudBubbleRight(this.designW - 1, y + 90, 11);
+
+    ctx.restore();
   }
 
   renderGame(ctx) {
@@ -467,9 +892,10 @@ export default class JumpScene extends BaseGameScene {
     ctx.scale(this.scale, this.scale);
 
     // 绘制垂直大地图背景（根据 cameraY 的位置计算无缝色彩线性渐变，实现超平滑的阶段过渡）
+    const isEndless = this.state.mode === 'endless';
     const forestY = 3200 - this.designH;
-    const ruinsY = 1650 - this.designH;
-    const skyY = 0;
+    const ruinsY = isEndless ? (1150 - this.designH) : (1650 - this.designH);
+    const skyY = isEndless ? (-850 - this.designH) : 0;
 
     let colorTop = '#e5ebd7';
     let colorBottom = '#d8e5d9';
@@ -480,38 +906,18 @@ export default class JumpScene extends BaseGameScene {
       sky:    { top: '#d1e6f5', bottom: '#ebe0ca' }
     };
 
-    if (this.state.mode === 'endless') {
-      const baseY = 3200 - this.designH;
-      const distClimbed = baseY - this.cameraY;
-      const normY = ((distClimbed % 1500) + 1500) % 1500;
-
-      if (normY < 500) {
-        const factor = normY / 500;
-        colorTop = interpolateColor(colors.forest.top, colors.ruins.top, factor);
-        colorBottom = interpolateColor(colors.forest.bottom, colors.ruins.bottom, factor);
-      } else if (normY < 1000) {
-        const factor = (normY - 500) / 500;
-        colorTop = interpolateColor(colors.ruins.top, colors.sky.top, factor);
-        colorBottom = interpolateColor(colors.ruins.bottom, colors.sky.bottom, factor);
-      } else {
-        const factor = (normY - 1000) / 500;
-        colorTop = interpolateColor(colors.sky.top, colors.forest.top, factor);
-        colorBottom = interpolateColor(colors.sky.bottom, colors.forest.bottom, factor);
-      }
+    if (this.cameraY >= ruinsY) {
+      // 宁静之森 ➔ 险峻遗迹 渐变
+      const range = forestY - ruinsY;
+      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - ruinsY) / range)) : 1.0;
+      colorTop = interpolateColor(colors.ruins.top, colors.forest.top, factor);
+      colorBottom = interpolateColor(colors.ruins.bottom, colors.forest.bottom, factor);
     } else {
-      if (this.cameraY >= ruinsY) {
-        // 宁静之森 ➔ 险峻遗迹 渐变
-        const range = forestY - ruinsY;
-        const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - ruinsY) / range)) : 1.0;
-        colorTop = interpolateColor(colors.ruins.top, colors.forest.top, factor);
-        colorBottom = interpolateColor(colors.ruins.bottom, colors.forest.bottom, factor);
-      } else {
-        // 险峻遗迹 ➔ 云霄之巅 渐变
-        const range = ruinsY - skyY;
-        const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - skyY) / range)) : 0.0;
-        colorTop = interpolateColor(colors.sky.top, colors.ruins.top, factor);
-        colorBottom = interpolateColor(colors.sky.bottom, colors.ruins.bottom, factor);
-      }
+      // 险峻遗迹 ➔ 云霄之巅 渐变
+      const range = ruinsY - skyY;
+      const factor = range > 0 ? Math.max(0, Math.min(1.0, (this.cameraY - skyY) / range)) : 0.0;
+      colorTop = interpolateColor(colors.sky.top, colors.ruins.top, factor);
+      colorBottom = interpolateColor(colors.sky.bottom, colors.ruins.bottom, factor);
     }
 
     const grad = ctx.createLinearGradient(0, 0, 0, this.designH);
@@ -519,6 +925,12 @@ export default class JumpScene extends BaseGameScene {
     grad.addColorStop(1, colorBottom);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, this.designW, this.designH);
+
+    // 绘制三层视差背景
+    const { forestAlpha, ruinsAlpha, skyAlpha } = this.getPhaseAlphas();
+    this.drawForestParallax(ctx, forestAlpha);
+    this.drawRuinsParallax(ctx, ruinsAlpha);
+    this.drawSkyParallax(ctx, skyAlpha);
 
     // Y轴的视口投影转换 (世界 Y ➔ 视口 Y)
     ctx.save();
@@ -568,21 +980,138 @@ export default class JumpScene extends BaseGameScene {
 
     // 粒子渲染
     this.campfireParticles.forEach(p => p.render(ctx));
+    this.particles.forEach(p => p.render(ctx));
 
     // 绘制所有平台
     this.state.platforms.forEach(p => {
+      let theme = 'wood';
+      const isEndless = this.state.mode === 'endless';
+      const ruinsLimitY = isEndless ? 1150 : 2150;
+      const skyLimitY = isEndless ? -850 : 1100;
+
+      if (p.type === 'stone' || (p.type === 'slope' && p.y >= skyLimitY && p.y < ruinsLimitY)) {
+        theme = 'stone';
+      } else if (p.type === 'cloud' || (p.type === 'slope' && p.y < skyLimitY)) {
+        theme = 'cloud';
+      }
+
       if (p.type === 'slope') {
         ctx.save();
-        ctx.fillStyle = '#5c7866'; // 默认木质绿斜面
-        ctx.strokeStyle = '#415749';
-        ctx.lineWidth = 1.5;
-
         const isBoth = p.slopeDir === 'both';
         const flatW = isBoth 
           ? Math.floor(p.w * 0.55)
           : Math.floor(p.w * 0.6);
         const slopeW = isBoth ? Math.floor((p.w - flatW) / 2) : (p.w - flatW);
 
+        // 确定当前高度对应的主题材质参数
+        let flatColor = '#6d8a76';    // 平顶背景色
+        let grainColor = 'rgba(0, 0, 0, 0.1)'; // 木纹/石纹色
+        let slideBgColor = '#3d4d42'; // 滑面背景色
+        let stripeColor = 'rgba(126, 163, 140, 0.4)'; // 滑槽细线色
+        let strokeColor = '#4f6957';  // 平台轮廓描边色
+
+        if (theme === 'stone') {
+          flatColor = '#a89e90';
+          grainColor = 'rgba(0, 0, 0, 0.12)';
+          slideBgColor = '#5c564f';
+          stripeColor = 'rgba(238, 235, 230, 0.3)';
+          strokeColor = '#80776b';
+        } else if (theme === 'cloud') {
+          flatColor = '#ffffff';
+          grainColor = '#ebf3f7'; // 云朵内泡泡色
+          slideBgColor = '#d9e6ed';
+          stripeColor = 'rgba(255, 255, 255, 0.85)';
+          strokeColor = '#ccdbe3';
+        }
+
+        // 1. 绘制平顶平台部分 (Safe Landing Deck)
+        let flatX = p.x;
+        if (isBoth) {
+          flatX = p.x + slopeW;
+        } else if (p.slopeDir === 'left-down') {
+          flatX = p.x + p.w - flatW;
+        } else {
+          flatX = p.x;
+        }
+
+        // 填充平顶背景色
+        ctx.fillStyle = flatColor;
+        ctx.fillRect(flatX, p.y, flatW, p.h);
+
+        // 平顶表面细节纹理
+        if (theme === 'wood' || theme === 'stone') {
+          ctx.strokeStyle = grainColor;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(flatX + 4, p.y + p.h * 0.3);
+          ctx.lineTo(flatX + flatW - 4, p.y + p.h * 0.3);
+          ctx.moveTo(flatX + 8, p.y + p.h * 0.7);
+          ctx.lineTo(flatX + flatW - 8, p.y + p.h * 0.7);
+          ctx.stroke();
+        } else {
+          // 云朵平顶轻柔泡泡
+          ctx.fillStyle = grainColor;
+          ctx.beginPath();
+          ctx.arc(flatX + flatW * 0.5, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // 顶部高光微光线
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(flatX, p.y);
+        ctx.lineTo(flatX + flatW, p.y);
+        ctx.stroke();
+
+        // 2. 绘制直角三角形滑动区域
+        const drawSlopeSection = (sx, sy, sw, sh, sdir) => {
+          ctx.save();
+          // Clip 剪切限制于直角三角形内
+          ctx.beginPath();
+          if (sdir === 'left-down') {
+            ctx.moveTo(sx, sy + sh);
+            ctx.lineTo(sx + sw, sy);
+            ctx.lineTo(sx + sw, sy + sh);
+          } else {
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx, sy + sh);
+            ctx.lineTo(sx + sw, sy + sh);
+          }
+          ctx.closePath();
+          ctx.clip();
+
+          // 填充滑动底色
+          ctx.fillStyle = slideBgColor;
+          ctx.fillRect(sx, sy, sw, sh);
+
+          // 绘制细密雅致的 45 度防滑凹槽槽线 (宽度 1.5px)
+          ctx.strokeStyle = stripeColor;
+          ctx.lineWidth = 1.5;
+          const step = (theme === 'wood') ? 8 : 10;
+          for (let x = sx - sh; x < sx + sw + sh; x += step) {
+            ctx.beginPath();
+            ctx.moveTo(x, sy);
+            ctx.lineTo(x + sh, sy + sh);
+            ctx.stroke();
+          }
+          ctx.restore();
+        };
+
+        if (isBoth) {
+          drawSlopeSection(p.x, p.y, slopeW, p.h, 'left-down');
+          drawSlopeSection(p.x + slopeW + flatW, p.y, slopeW, p.h, 'right-down');
+        } else {
+          if (p.slopeDir === 'left-down') {
+            drawSlopeSection(p.x, p.y, slopeW, p.h, 'left-down');
+          } else {
+            drawSlopeSection(p.x + flatW, p.y, slopeW, p.h, 'right-down');
+          }
+        }
+
+        // 3. 绘制整体斜坡平台的边界描边轮廓
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         if (isBoth) {
           ctx.moveTo(p.x, p.y + p.h);
@@ -601,53 +1130,90 @@ export default class JumpScene extends BaseGameScene {
           ctx.lineTo(p.x + p.w, p.y + p.h);
         }
         ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // 绘制斜边与平顶的高光描线 (发光浮雕)
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        if (isBoth) {
-          ctx.moveTo(p.x, p.y + p.h);
-          ctx.lineTo(p.x + slopeW, p.y);
-          ctx.lineTo(p.x + slopeW + flatW, p.y);
-          ctx.lineTo(p.x + p.w, p.y + p.h);
-        } else if (p.slopeDir === 'left-down') {
-          ctx.moveTo(p.x, p.y + p.h);
-          ctx.lineTo(p.x + p.w - flatW, p.y);
-          ctx.lineTo(p.x + p.w, p.y);
-        } else {
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + flatW, p.y);
-          ctx.lineTo(p.x + p.w, p.y + p.h);
-        }
         ctx.stroke();
         ctx.restore();
       } else {
         let platColor = '#6d8a76'; // 木质 (森)
         let strokeColor = '#4f6957';
-        if (p.type === 'stone') {
+        if (theme === 'stone') {
           platColor = '#a89e90'; // 石质 (遗迹)
           strokeColor = '#80776b';
-        } else if (p.type === 'cloud') {
+        } else if (theme === 'cloud') {
           platColor = '#ffffff'; // 云朵 (顶)
           strokeColor = '#ccdbe3';
         }
 
-        fillRoundRect(ctx, p.x, p.y, p.w, p.h, 3, platColor);
-        strokeRoundRect(ctx, p.x, p.y, p.w, p.h, 3, strokeColor, 1.5);
+        fillRoundRect(ctx, p.x, p.y, p.w, p.h, 4, platColor);
+        strokeRoundRect(ctx, p.x, p.y, p.w, p.h, 4, strokeColor, 1.5);
 
-        // 云顶轻柔修饰线
-        if (p.type === 'cloud') {
+        ctx.save();
+        if (theme === 'stone') {
+          // 石台加裂缝纹理
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x + p.w * 0.3, p.y);
+          ctx.lineTo(p.x + p.w * 0.25, p.y + p.h * 0.5);
+          ctx.lineTo(p.x + p.w * 0.35, p.y + p.h);
+          ctx.stroke();
+
+          // 顶部高光
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+          ctx.beginPath();
+          ctx.moveTo(p.x + 2, p.y + 1);
+          ctx.lineTo(p.x + p.w - 2, p.y + 1);
+          ctx.stroke();
+        } else if (theme === 'cloud') {
+          // 云朵柔和内圈泡泡
           ctx.fillStyle = '#ebf3f7';
           ctx.beginPath();
           ctx.arc(p.x + p.w * 0.25, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
           ctx.arc(p.x + p.w * 0.75, p.y + p.h * 0.5, p.h * 0.3, 0, Math.PI * 2);
           ctx.fill();
+        } else {
+          // 木台质感高光线与木纹暗线
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(p.x + 4, p.y + 2);
+          ctx.lineTo(p.x + p.w - 4, p.y + 2);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+          ctx.beginPath();
+          ctx.moveTo(p.x + 6, p.y + p.h * 0.5);
+          ctx.lineTo(p.x + p.w - 6, p.y + p.h * 0.5);
+          ctx.stroke();
         }
+        ctx.restore();
       }
     });
+
+    // 绘制两侧主题墙壁装饰（藤蔓、石壁、云层），代替空气墙
+    const wallLoopH = 120;
+    const startWallY = Math.floor(this.cameraY / wallLoopH) * wallLoopH;
+    const endWallY = this.cameraY + this.designH + wallLoopH;
+
+    for (let wy = startWallY; wy < endWallY; wy += wallLoopH) {
+      if (forestAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = forestAlpha;
+        this.drawVineSegment(ctx, wy, wallLoopH);
+        ctx.restore();
+      }
+      if (ruinsAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = ruinsAlpha;
+        this.drawRuinsWallSegment(ctx, wy, wallLoopH);
+        ctx.restore();
+      }
+      if (skyAlpha > 0.01) {
+        ctx.save();
+        ctx.globalAlpha = skyAlpha;
+        this.drawSkyCloudSegment(ctx, wy, wallLoopH);
+        ctx.restore();
+      }
+    }
 
     // 绘制起跳弹弓拉线轨迹抛物线
     if (this.state.state === 'charging' && this.dragStart && this.dragCurrent) {
@@ -713,18 +1279,102 @@ export default class JumpScene extends BaseGameScene {
     ctx.arc(0, 0, this.state.radius, 0, Math.PI * 2);
     ctx.fill();
 
+    // 外描边轮廓以提高在深色背景下的对比度
+    ctx.strokeStyle = '#25221d';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
     // 高光
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.beginPath();
     ctx.arc(-this.state.radius * 0.35, -this.state.radius * 0.35, this.state.radius * 0.25, 0, Math.PI * 2);
     ctx.fill();
 
-    // 呆萌眼睛
+    // 呆萌表情眼睛 (旋转与缩放对齐)
+    const R = this.state.radius;
+    const cx1 = -R * 0.22;
+    const cy1 = -R * 0.1;
+    const cx2 = R * 0.28;
+    const cy2 = -R * 0.1;
+
+    ctx.save();
+    ctx.strokeStyle = '#2c2c2c';
+    ctx.lineWidth = 1.2;
+    ctx.lineCap = 'round';
     ctx.fillStyle = '#2c2c2c';
-    ctx.beginPath();
-    ctx.arc(-this.state.radius * 0.22, -this.state.radius * 0.1, 1.1, 0, Math.PI * 2);
-    ctx.arc(this.state.radius * 0.28, -this.state.radius * 0.1, 1.1, 0, Math.PI * 2);
-    ctx.fill();
+
+    if (this.state.dizzyTimer > 0) {
+      // 1. 晕眩眼 X X
+      const drawX = (cx, cy) => {
+        ctx.beginPath();
+        ctx.moveTo(cx - 1.2, cy - 1.2);
+        ctx.lineTo(cx + 1.2, cy + 1.2);
+        ctx.moveTo(cx + 1.2, cy - 1.2);
+        ctx.lineTo(cx - 1.2, cy + 1.2);
+        ctx.stroke();
+      };
+      drawX(cx1, cy1);
+      drawX(cx2, cy2);
+    } else if (this.state.state === 'charging') {
+      // 2. 蓄力眯眼 > <
+      ctx.beginPath();
+      // 左眼 >
+      ctx.moveTo(cx1 - 1.2, cy1 - 1.2);
+      ctx.lineTo(cx1 + 1.0, cy1);
+      ctx.lineTo(cx1 - 1.2, cy1 + 1.2);
+      // 右眼 <
+      ctx.moveTo(cx2 + 1.2, cy2 - 1.2);
+      ctx.lineTo(cx2 - 1.0, cy2);
+      ctx.lineTo(cx2 + 1.2, cy2 + 1.2);
+      ctx.stroke();
+    } else if (this.state.state === 'jumping') {
+      // 3. 起跳惊恐圆眼 (大，含高光)
+      ctx.beginPath();
+      ctx.arc(cx1, cy1, 1.4, 0, Math.PI * 2);
+      ctx.arc(cx2, cy2, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 小白高光
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx1 - 0.4, cy1 - 0.4, 0.4, 0, Math.PI * 2);
+      ctx.arc(cx2 - 0.4, cy2 - 0.4, 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (this.state.state === 'falling') {
+      // 4. 下落眼 ∩ ∩
+      ctx.beginPath();
+      ctx.arc(cx1, cy1 + 0.5, 1.2, Math.PI, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx2, cy2 + 0.5, 1.2, Math.PI, 0);
+      ctx.stroke();
+    } else if (this.state.state === 'sliding') {
+      // 5. 滑行惬意波浪眼 ~ ~
+      const drawWave = (cx, cy) => {
+        ctx.beginPath();
+        ctx.moveTo(cx - 1.5, cy);
+        ctx.quadraticCurveTo(cx - 0.75, cy - 0.8, cx, cy);
+        ctx.quadraticCurveTo(cx + 0.75, cy + 0.8, cx + 1.5, cy);
+        ctx.stroke();
+      };
+      drawWave(cx1, cy1);
+      drawWave(cx2, cy2);
+    } else {
+      // 6. 默认常态高光眼
+      ctx.beginPath();
+      ctx.arc(cx1, cy1, 1.1, 0, Math.PI * 2);
+      ctx.arc(cx2, cy2, 1.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 白光亮点
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx1 - 0.3, cy1 - 0.3, 0.3, 0, Math.PI * 2);
+      ctx.arc(cx2 - 0.3, cy2 - 0.3, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
     ctx.restore();
 
     ctx.restore(); // 还原 Camera 偏移行

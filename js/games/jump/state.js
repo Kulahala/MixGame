@@ -52,6 +52,7 @@ export class JumpState {
     // 碰撞事件状态标志（用于向 index 暴露震动事件）
     this.justBouncedWall = false;
     this.justBouncedCeiling = false;
+    this.dizzyTimer = 0; // 眩晕表情毫秒计时器
 
     this.activeColliders = [];
 
@@ -175,6 +176,7 @@ export class JumpState {
     this.slimeVelX = 0;
     this.slimeVelY = 0;
     this.score = 0;
+    this.dizzyTimer = 0;
     this.updateActiveColliders();
   }
 
@@ -279,12 +281,19 @@ export class JumpState {
         this.saveResult();
       }
     }
+
+    if (this.justBouncedWall || this.justBouncedCeiling) {
+      this.dizzyTimer = 220;
+    }
   }
 
   /**
    * 单步微物理步运动与碰撞检测
    */
   updateSubstep(substepDt) {
+    // 眩晕计时器物理时间衰减
+    this.dizzyTimer = Math.max(0, this.dizzyTimer - substepDt);
+
     // 简谐震荡弹性更新 (Damped Harmonic Oscillation)
     if (this.state !== 'charging') {
       const k = 0.005; // 弹簧刚度
@@ -324,12 +333,14 @@ export class JumpState {
       nextX = this.radius;
       this.vx = -this.vx * REBOUND;
       this.justBouncedWall = true;
+      this.dizzyTimer = 220; // 眩晕表情触发
       this.scaleX = 0.65;
       this.scaleY = 1.35;
     } else if (nextX + this.radius > this.width) {
       nextX = this.width - this.radius;
       this.vx = -this.vx * REBOUND;
       this.justBouncedWall = true;
+      this.dizzyTimer = 220; // 眩晕表情触发
       this.scaleX = 0.65;
       this.scaleY = 1.35;
     }
